@@ -706,7 +706,7 @@ function validateData(data){
         if(!data[k]){data[k]=(k==='checks'||k==='water'||k==='meds'?{}:[]);issues.push('缺少字段 '+k+' 已自动修复');}
     });
     // 验证数组类型
-    ['summaries','storeIdeas','storeDrafts','ipIdeas','ipDrafts','moods','timeline','reviews','scripts','memos','weights','fitness','hotLinks'].forEach(function(k){
+    ['summaries','storeIdeas','storeDrafts','ipIdeas','ipDrafts','moods','timeline','scripts','memos','weights','fitness','hotLinks'].forEach(function(k){
         if(!Array.isArray(data[k])){data[k]=[];issues.push(k+' 不是数组，已重置');valid=false;}
     });
     // 验证ID完整性
@@ -2251,6 +2251,9 @@ function renderWorkReview(){
 // ============ 每日复盘 ============
 function renderReviewSection(){
     const today=T();
+    // 确保 reviews 是对象
+    if(D.reviews&&!Array.isArray(D.reviews)&&typeof D.reviews!=='object')D.reviews={};
+    if(!D.reviews||Array.isArray(D.reviews))D.reviews={};
     var rd=document.getElementById('reviewDate');
     if(rd)rd.textContent=today+' 复盘';
     // 恢复今日已保存的复盘内容
@@ -2280,7 +2283,7 @@ function renderReviewSection(){
 
 function saveReview(){
     const today=T();
-    if(!D.reviews)D.reviews={};
+    if(!D.reviews||Array.isArray(D.reviews))D.reviews={};
     // 获取当前情绪打分
     var moodEl=document.getElementById('moodNote');
     var mood=currentMood||3;
@@ -2320,7 +2323,8 @@ function renderWeights(){
     var wc=document.getElementById('weightChart');
     var wh=document.getElementById('weightHistory');
     var wt=document.getElementById('weightTrend');
-    if(!D.weights||!D.weights.length){
+    if(!D.weights||!Array.isArray(D.weights))D.weights=[];
+    if(!D.weights.length){
         if(wc)wc.innerHTML='';
         if(wh)wh.innerHTML='';
         if(wt)wt.textContent='还没有记录';
@@ -2396,7 +2400,8 @@ function renderFitness(){
     var fs=document.getElementById('fitnessSummary');
     var fc=document.getElementById('fitnessChart');
     var fh=document.getElementById('fitnessHistory');
-    if(!D.fitness||!D.fitness.length){
+    if(!D.fitness||!Array.isArray(D.fitness))D.fitness=[];
+    if(!D.fitness.length){
         if(fs)fs.textContent='还没有记录';
         if(fc)fc.innerHTML='';
         if(fh)fh.innerHTML='';
@@ -2446,7 +2451,7 @@ function renderFitness(){
 // ============ 吃药打卡 ============
 function toggleMed(period){
     var today=T();
-    if(!D.meds)D.meds={};
+    if(!D.meds||typeof D.meds!=='object'||Array.isArray(D.meds))D.meds={};
     if(!D.meds[today])D.meds[today]={morning:false,noon:false,evening:false};
     D.meds[today][period]=!D.meds[today][period];
     save();
@@ -2455,7 +2460,8 @@ function toggleMed(period){
 }
 function renderMeds(){
     var today=T();
-    var med=D.meds&&D.meds[today]?D.meds[today]:{morning:false,noon:false,evening:false};
+    if(!D.meds||typeof D.meds!=='object'||Array.isArray(D.meds))D.meds={};
+    var med=D.meds[today]?D.meds[today]:{morning:false,noon:false,evening:false};
     var items=[
         {key:'morning',label:'medMorning',btn:'medBtnM'},
         {key:'noon',label:'medNoon',btn:'medBtnN'},
