@@ -425,66 +425,138 @@ textarea{resize:vertical;min-height:55px}
         </div>
     </div>
 
-    <!-- ==================== 2. 门店IP ==================== -->
-    <div class="panel" id="panel-store">
-        <div class="stat-row">
-            <div class="stat-item"><div class="stat-num" id="storeDraftCount">0</div><div class="stat-label">草稿/待发</div></div>
-            <div class="stat-item"><div class="stat-num" id="storePublished">0</div><div class="stat-label">本月已发布</div></div>
-            <div class="stat-item"><div class="stat-num" id="storeIdeas">0</div><div class="stat-label">灵感库存</div></div>
+    <!-- ==================== 2. 自媒体（门店IP+个人IP合并） ==================== -->
+    <div class="panel" id="panel-media">
+        <div style="display:flex;gap:6px;margin-bottom:14px">
+            <button class="tag sel" id="mediaTabStore" onclick="switchMediaTab('store')" style="padding:8px 18px;font-size:14px;border-radius:20px;border:1.5px solid var(--border);background:var(--primary);color:#fff;cursor:pointer">🏪 门店IP</button>
+            <button class="tag" id="mediaTabIp" onclick="switchMediaTab('ip')" style="padding:8px 18px;font-size:14px;border-radius:20px;border:1.5px solid var(--border);background:var(--card);color:var(--text);cursor:pointer">🎭 个人IP</button>
+            <button class="tag" id="mediaTabScript" onclick="switchMediaTab('script')" style="padding:8px 18px;font-size:14px;border-radius:20px;border:1.5px solid var(--border);background:var(--card);color:var(--text);cursor:pointer">📖 脚本工坊</button>
         </div>
-        <div class="card">
-            <h3>💡 门店灵感</h3>
-            <div class="sub">随时记录门店推广灵感</div>
-            <div class="fg"><label>选题标题</label><input type="text" id="storeIdeaTitle" placeholder="一句话描述" oninput="autoSaveDraft()"></div>
-            <div class="fg"><label>内容类型</label><select id="storeIdeaType"><option>环境展示</option><option>学员对比</option><option>训练氛围</option><option>干货科普</option><option>活动推广</option><option>学员故事</option><option>教练日常</option></select></div>
-            <div class="fg"><label>脚本/文案</label><textarea id="storeIdeaScript" placeholder="拍摄思路、文案..." rows="3" oninput="autoSaveDraft()"></textarea></div>
-            <button class="btn btn-dark" onclick="addStoreIdea()">💾 保存灵感</button>
-            <div id="storeIdeaLib" style="margin-top:10px"><div class="empty">还没有门店灵感</div></div>
+        <!-- 门店IP子面板 -->
+        <div id="mediaStorePanel">
+            <div class="stat-row">
+                <div class="stat-item"><div class="stat-num" id="storeDraftCount">0</div><div class="stat-label">草稿/待发</div></div>
+                <div class="stat-item"><div class="stat-num" id="storePublished">0</div><div class="stat-label">本月已发布</div></div>
+                <div class="stat-item"><div class="stat-num" id="storeIdeas">0</div><div class="stat-label">灵感库存</div></div>
+            </div>
+            <div class="card">
+                <h3>💡 门店灵感</h3>
+                <div class="sub">随时记录门店推广灵感</div>
+                <div class="fg"><label>选题标题</label><input type="text" id="storeIdeaTitle" placeholder="一句话描述" oninput="autoSaveDraft()"></div>
+                <div class="fg"><label>内容类型</label><select id="storeIdeaType"><option>环境展示</option><option>学员对比</option><option>训练氛围</option><option>干货科普</option><option>活动推广</option><option>学员故事</option><option>教练日常</option></select></div>
+                <div class="fg"><label>脚本/文案</label><textarea id="storeIdeaScript" placeholder="拍摄思路、文案..." rows="3" oninput="autoSaveDraft()"></textarea></div>
+                <button class="btn btn-dark" onclick="addStoreIdea()">💾 保存灵感</button>
+                <div id="storeIdeaLib" style="margin-top:10px"><div class="empty">还没有门店灵感</div></div>
+            </div>
+            <div class="card">
+                <h3>🏪 门店发布草稿</h3>
+                <div class="fg-row"><div class="fg"><label>平台</label><select id="storePlat"><option>小红书</option><option>抖音</option></select></div><div class="fg"><label>内容类型</label><select id="storeType"><option>环境展示</option><option>学员对比</option><option>训练氛围</option><option>干货科普</option><option>活动推广</option><option>学员故事</option><option>教练日常</option></select></div></div>
+                <div class="fg"><label>标题</label><input type="text" id="storeTitle" placeholder="标题" oninput="autoSaveDraft()"></div>
+                <div class="fg"><label>正文/文案</label><textarea id="storeBody" placeholder="正文..." rows="3" oninput="autoSaveDraft()"></textarea></div>
+                <div class="fg"><label>标签</label><input type="text" id="storeTags" placeholder="#健身 #减脂" oninput="autoSaveDraft()"></div>
+                <div class="fg-row"><div class="fg"><label>状态</label><select id="storeStatus"><option>💡 灵感</option><option>📝 草稿</option><option>📷 待拍摄</option><option>✂️ 待剪辑</option><option>📤 待发布</option><option>✅ 已发布</option></select></div><div class="fg"><label>发布日期</label><input type="date" id="storePlanDate"></div></div>
+                <button class="btn btn-dark" onclick="saveStoreDraft()">💾 保存草稿</button>
+            </div>
+            <div class="card"><h3>📋 门店内容列表</h3><div id="storeDraftList"><div class="empty">还没有门店内容</div></div></div>
         </div>
-        <div class="card">
-            <h3>🏪 门店发布草稿</h3>
-            <div class="fg-row"><div class="fg"><label>平台</label><select id="storePlat"><option>小红书</option><option>抖音</option></select></div><div class="fg"><label>内容类型</label><select id="storeType"><option>环境展示</option><option>学员对比</option><option>训练氛围</option><option>干货科普</option><option>活动推广</option><option>学员故事</option><option>教练日常</option></select></div></div>
-            <div class="fg"><label>标题</label><input type="text" id="storeTitle" placeholder="标题" oninput="autoSaveDraft()"></div>
-            <div class="fg"><label>正文/文案</label><textarea id="storeBody" placeholder="正文..." rows="3" oninput="autoSaveDraft()"></textarea></div>
-            <div class="fg"><label>标签</label><input type="text" id="storeTags" placeholder="#健身 #减脂" oninput="autoSaveDraft()"></div>
-            <div class="fg-row"><div class="fg"><label>状态</label><select id="storeStatus"><option>💡 灵感</option><option>📝 草稿</option><option>📷 待拍摄</option><option>✂️ 待剪辑</option><option>📤 待发布</option><option>✅ 已发布</option></select></div><div class="fg"><label>发布日期</label><input type="date" id="storePlanDate"></div></div>
-            <button class="btn btn-dark" onclick="saveStoreDraft()">💾 保存草稿</button>
+        <!-- 个人IP子面板 -->
+        <div id="mediaIpPanel" style="display:none">
+            <div class="stat-row">
+                <div class="stat-item"><div class="stat-num" id="ipDraftCount">0</div><div class="stat-label">草稿/待发</div></div>
+                <div class="stat-item"><div class="stat-num" id="ipPublished">0</div><div class="stat-label">本月已发布</div></div>
+                <div class="stat-item"><div class="stat-num" id="ipIdeas">0</div><div class="stat-label">灵感库存</div></div>
+            </div>
+            <div class="card">
+                <h3>💡 个人IP灵感</h3>
+                <div class="sub">随时记录个人IP选题</div>
+                <div class="fg"><label>选题标题</label><input type="text" id="ipIdeaTitle" placeholder="一句话描述" oninput="autoSaveDraft()"></div>
+                <div class="fg"><label>内容类型</label><select id="ipIdeaType"><option>重启日记</option><option>好好吃饭</option><option>动一动</option><option>健身日常</option><option>和自己相处</option><option>生活碎片</option><option>慢慢变好</option><option>干货科普</option><option>生活vlog</option><option>装修/家居</option></select></div>
+                <div class="fg"><label>脚本/口播稿</label><textarea id="ipIdeaScript" placeholder="口播稿、拍摄思路..." rows="3" oninput="autoSaveDraft()"></textarea></div>
+                <button class="btn btn-dark" onclick="addIpIdea()">💾 保存灵感</button>
+                <div id="ipIdeaLib" style="margin-top:10px"><div class="empty">还没有个人IP灵感</div></div>
+            </div>
+            <div class="card">
+                <h3>👤 个人IP发布草稿</h3>
+                <div class="fg-row"><div class="fg"><label>平台</label><select id="ipPlat"><option>小红书</option><option>抖音</option></select></div><div class="fg"><label>内容类型</label><select id="ipType"><option>重启日记</option><option>好好吃饭</option><option>动一动</option><option>健身日常</option><option>和自己相处</option><option>生活碎片</option><option>慢慢变好</option><option>干货科普</option><option>生活vlog</option><option>装修/家居</option></select></div></div>
+                <div class="fg"><label>标题</label><input type="text" id="ipTitle" placeholder="标题" oninput="autoSaveDraft()"></div>
+                <div class="fg"><label>正文/口播稿</label><textarea id="ipBody" placeholder="正文..." rows="3" oninput="autoSaveDraft()"></textarea></div>
+                <div class="fg"><label>标签</label><input type="text" id="ipTags" placeholder="#减脂 #重启人生" oninput="autoSaveDraft()"></div>
+                <div class="fg-row"><div class="fg"><label>状态</label><select id="ipStatus"><option>💡 灵感</option><option>📝 草稿</option><option>📷 待拍摄</option><option>✂️ 待剪辑</option><option>📤 待发布</option><option>✅ 已发布</option></select></div><div class="fg"><label>发布日期</label><input type="date" id="ipPlanDate"></div></div>
+                <button class="btn btn-dark" onclick="saveIpDraft()">💾 保存草稿</button>
+            </div>
+            <div class="card"><h3>📋 个人IP内容列表</h3><div id="ipDraftList"><div class="empty">还没有个人IP内容</div></div></div>
         </div>
-        <div class="card"><h3>📋 门店内容列表</h3><div id="storeDraftList"><div class="empty">还没有门店内容</div></div></div>
+        <!-- 脚本工坊子面板 -->
+        <div id="mediaScriptPanel" style="display:none">
+            <div class="card" style="background:linear-gradient(135deg,#f5eff8,#faf7f2);border-color:#d4c4e0">
+                <h3>📖 脚本工坊</h3>
+                <div class="sub">存放脚本模板、开头话术、爆款结构、金句收藏</div>
+            </div>
+            <div class="card">
+                <h3>✍️ 新建脚本</h3>
+                <div class="fg"><label>脚本分类</label><select id="scriptCat"><option>开场白模板</option><option>日常vlog脚本</option><option>知识科普脚本</option><option>情绪共鸣脚本</option><option>金句收藏</option><option>爆款结构参考</option><option>门店推广脚本</option></select></div>
+                <div class="fg"><label>所属IP</label><select id="scriptIp"><option value="store">🏪 门店IP</option><option value="ip">🎭 个人IP</option></select></div>
+                <div class="fg"><label>标题</label><input type="text" id="scriptTitle" placeholder="脚本标题" oninput="autoSaveDraft()"></div>
+                <div class="fg"><label>脚本内容</label><textarea id="scriptContent" placeholder="开头：&#10;中间：&#10;结尾：&#10;&#10;拍摄建议：" rows="6" oninput="autoSaveDraft()"></textarea></div>
+                <button class="btn btn-dark" onclick="saveScript()">💾 保存脚本</button>
+            </div>
+            <div class="card"><h3>📚 脚本库</h3><div id="scriptLib"><div class="empty">还没有保存脚本</div></div></div>
+        </div>
     </div>
 
-    <!-- ==================== 3. 个人IP ==================== -->
-    <div class="panel" id="panel-ip">
-        <div class="stat-row">
-            <div class="stat-item"><div class="stat-num" id="ipDraftCount">0</div><div class="stat-label">草稿/待发</div></div>
-            <div class="stat-item"><div class="stat-num" id="ipPublished">0</div><div class="stat-label">本月已发布</div></div>
-            <div class="stat-item"><div class="stat-num" id="ipIdeas">0</div><div class="stat-label">灵感库存</div></div>
-        </div>
+    <!-- ==================== 3. 备忘录 ==================== -->
+    <div class="panel" id="panel-memo">
         <div class="card">
-            <h3>💡 个人IP灵感</h3>
-            <div class="sub">随时记录个人IP选题</div>
-            <div class="fg"><label>选题标题</label><input type="text" id="ipIdeaTitle" placeholder="一句话描述" oninput="autoSaveDraft()"></div>
-            <div class="fg"><label>内容类型</label><select id="ipIdeaType"><option>减脂记录</option><option>饮食分享</option><option>训练日常</option><option>情绪/感受</option><option>干货科普</option><option>生活vlog</option><option>装修/家居</option></select></div>
-            <div class="fg"><label>脚本/口播稿</label><textarea id="ipIdeaScript" placeholder="口播稿、拍摄思路..." rows="3" oninput="autoSaveDraft()"></textarea></div>
-            <button class="btn btn-dark" onclick="addIpIdea()">💾 保存灵感</button>
-            <div id="ipIdeaLib" style="margin-top:10px"><div class="empty">还没有个人IP灵感</div></div>
+            <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+                <input type="text" id="memoSearch" placeholder="🔍 搜索备忘..." oninput="renderMemos()" style="flex:1;min-width:150px">
+                <select id="memoFilter" onchange="renderMemos()" style="width:auto;min-width:80px"><option value="all">全部</option><option value="work">💡 工作想法</option><option value="life">🌿 生活灵感</option><option value="todo">✅ 待办</option><option value="emotion">🧠 情绪记录</option></select>
+            </div>
+            <div class="fg"><label>📝 新建备忘</label>
+                <textarea id="memoContent" placeholder="记点什么..." rows="3" oninput="autoSaveDraft()"></textarea>
+            </div>
+            <div class="fg"><label>分类标签</label><div class="tags" id="memoTagSel"><span class="tag" onclick="this.classList.toggle('sel')">💡 工作想法</span><span class="tag" onclick="this.classList.toggle('sel')">🌿 生活灵感</span><span class="tag" onclick="this.classList.toggle('sel')">✅ 待办</span><span class="tag" onclick="this.classList.toggle('sel')">🧠 情绪记录</span></div></div>
+            <div style="display:flex;gap:8px">
+                <button class="btn btn-dark" onclick="addMemo()" style="flex:1">💾 保存</button>
+                <button class="btn btn-outline" onclick="clearMemoForm()">清空</button>
+            </div>
         </div>
-        <div class="card">
-            <h3>👤 个人IP发布草稿</h3>
-            <div class="fg-row"><div class="fg"><label>平台</label><select id="ipPlat"><option>小红书</option><option>抖音</option></select></div><div class="fg"><label>内容类型</label><select id="ipType"><option>减脂记录</option><option>饮食分享</option><option>训练日常</option><option>情绪/感受</option><option>干货科普</option><option>生活vlog</option><option>装修/家居</option></select></div></div>
-            <div class="fg"><label>标题</label><input type="text" id="ipTitle" placeholder="标题" oninput="autoSaveDraft()"></div>
-            <div class="fg"><label>正文/口播稿</label><textarea id="ipBody" placeholder="正文..." rows="3" oninput="autoSaveDraft()"></textarea></div>
-            <div class="fg"><label>标签</label><input type="text" id="ipTags" placeholder="#减脂 #重启人生" oninput="autoSaveDraft()"></div>
-            <div class="fg-row"><div class="fg"><label>状态</label><select id="ipStatus"><option>💡 灵感</option><option>📝 草稿</option><option>📷 待拍摄</option><option>✂️ 待剪辑</option><option>📤 待发布</option><option>✅ 已发布</option></select></div><div class="fg"><label>发布日期</label><input type="date" id="ipPlanDate"></div></div>
-            <button class="btn btn-dark" onclick="saveIpDraft()">💾 保存草稿</button>
-        </div>
-        <div class="card"><h3>📋 个人IP内容列表</h3><div id="ipDraftList"><div class="empty">还没有个人IP内容</div></div></div>
+        <div id="memoList"><div class="empty">还没有备忘录</div></div>
     </div>
 
     <!-- ==================== 4. 生活 ==================== -->
     <div class="panel" id="panel-life">
+        <!-- 工作复盘（自动统计） -->
+        <div class="card" style="background:linear-gradient(135deg,#f0f7ef,#faf7f2);border-color:#c8dcc4">
+            <h3>💼 今日工作复盘</h3>
+            <div class="sub">根据工作台数据自动统计，看看今天做了多少事</div>
+            <div id="workReviewStats" style="font-size:14px;line-height:2;color:var(--text)">
+                <div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px dashed #e8e2da"><span>📋 课后总结（今日）</span><span id="wrSums" style="font-weight:600;color:var(--primary)">0 份</span></div>
+                <div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px dashed #e8e2da"><span>👥 服务客户（今日）</span><span id="wrClients" style="font-weight:600;color:var(--primary)">0 人</span></div>
+                <div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px dashed #e8e2da"><span>💡 门店IP灵感</span><span id="wrStoreIdeas" style="font-weight:600;color:var(--primary)">0 条</span></div>
+                <div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px dashed #e8e2da"><span>💡 个人IP灵感</span><span id="wrIpIdeas" style="font-weight:600;color:var(--primary)">0 条</span></div>
+                <div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px dashed #e8e2da"><span>📝 门店IP草稿</span><span id="wrStoreDrafts" style="font-weight:600;color:var(--primary)">0 条</span></div>
+                <div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px dashed #e8e2da"><span>📝 个人IP草稿</span><span id="wrIpDrafts" style="font-weight:600;color:var(--primary)">0 条</span></div>
+                <div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px dashed #e8e2da"><span>✅ 门店IP已发布</span><span id="wrStorePub" style="font-weight:600;color:var(--primary)">0 条</span></div>
+                <div style="display:flex;justify-content:space-between;padding:4px 0"><span>✅ 个人IP已发布</span><span id="wrIpPub" style="font-weight:600;color:var(--primary)">0 条</span></div>
+            </div>
+            <div id="workReviewEncourage" style="margin-top:10px;padding:8px 12px;background:#fff;border-radius:8px;font-size:13px;color:var(--primary);text-align:center;border:1px solid #e0eadc"></div>
+        </div>
+        <!-- 每日复盘 -->
+        <div class="card" style="background:linear-gradient(135deg,#fef9f0,#faf7f2);border-color:#e8dccf">
+            <h3>📝 每日复盘</h3>
+            <div class="sub" id="reviewDate"></div>
+            <div class="fg"><label>🌟 今天最值得记住的事</label><textarea id="rvBest" placeholder="今天发生了什么让你开心或有感触的事..." rows="2" oninput="autoSaveDraft()"></textarea></div>
+            <div class="fg"><label>🫀 身体感受</label><textarea id="rvBody" placeholder="今天身体哪里不舒服？哪里有好转？" rows="2" oninput="autoSaveDraft()"></textarea></div>
+            <div class="fg"><label>🧠 想法 / 灵感</label><textarea id="rvIdea" placeholder="脑子里冒出的任何想法，先记下来..." rows="2" oninput="autoSaveDraft()"></textarea></div>
+            <div class="fg"><label>📌 明天想做的事</label><textarea id="rvPlan" placeholder="明天想完成什么？..." rows="2" oninput="autoSaveDraft()"></textarea></div>
+            <button class="btn btn-dark" onclick="saveReview()">💾 保存复盘</button>
+            <div id="reviewHistory" style="margin-top:10px"></div>
+        </div>
         <div class="card"><h3>✅ 每日自检</h3><div class="sub" id="checkProgress">今日完成 0/10</div><div class="progress"><div class="fill" id="checkBar" style="width:0%"></div></div><div id="checklist" style="margin-top:10px"></div></div>
         <div class="card"><h3>💧 饮水追踪</h3><div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px" id="waterCups"></div><div class="sub" id="waterStatus">今天还没喝水</div></div>
+        <div class="card"><h3>⚖️ 体重记录</h3><div class="sub" id="weightTrend"></div><div class="fg-row"><div class="fg" style="flex:1"><input type="number" id="weightInput" placeholder="今日体重(kg)" step="0.1" min="30" max="200" style="font-size:16px;padding:12px" oninput="autoSaveDraft()"></div><button class="btn btn-dark" onclick="saveWeight()" style="height:46px;padding:0 16px">💾 记录</button></div><div id="weightChart" style="margin-top:10px;overflow-x:auto"></div><div id="weightHistory" style="margin-top:8px"></div></div>
+        <div class="card" style="background:linear-gradient(135deg,#fef5f0,#faf7f2);border-color:#e8cece"><h3>🏋️ 运动记录</h3><div class="sub" id="fitnessSummary"></div><div class="fg-row"><div class="fg"><label>力量训练（分钟）</label><input type="number" id="strengthMin" placeholder="0" min="0" max="300" oninput="autoCalcCalorie()"></div><div class="fg"><label>有氧运动（分钟）</label><input type="number" id="cardioMin" placeholder="0" min="0" max="300" oninput="autoCalcCalorie()"></div></div><div class="fg"><label>🔥 预估消耗</label><div id="calorieDisplay" style="font-size:24px;font-weight:700;color:var(--warmup)">0 kcal</div></div><button class="btn btn-dark" onclick="saveFitness()" style="width:100%">💾 记录今天的运动</button><div id="fitnessChart" style="margin-top:10px;overflow-x:auto"></div><div id="fitnessHistory" style="margin-top:8px"></div></div>
+        <div class="card" style="background:linear-gradient(135deg,#f5eff8,#faf7f2);border-color:#d4c4e0"><h3>💊 吃药打卡</h3><div class="sub">按时吃药，照顾好自己</div><div style="display:flex;flex-direction:column;gap:8px"><div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:#fff;border-radius:10px;border:1px solid var(--border)"><span style="font-size:14px">🌅</span><span style="flex:1;font-size:14px">早饭后</span><span id="medMorning" style="font-size:12px;color:#ccc">未打卡</span><button class="btn btn-xs btn-outline" id="medBtnM" onclick="toggleMed('morning')">打卡</button></div><div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:#fff;border-radius:10px;border:1px solid var(--border)"><span style="font-size:14px">☀️</span><span style="flex:1;font-size:14px">午饭后</span><span id="medNoon" style="font-size:12px;color:#ccc">未打卡</span><button class="btn btn-xs btn-outline" id="medBtnN" onclick="toggleMed('noon')">打卡</button></div><div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:#fff;border-radius:10px;border:1px solid var(--border)"><span style="font-size:14px">🌙</span><span style="flex:1;font-size:14px">晚饭后</span><span id="medEvening" style="font-size:12px;color:#ccc">未打卡</span><button class="btn btn-xs btn-outline" id="medBtnE" onclick="toggleMed('evening')">打卡</button></div></div><div id="medStreak" style="margin-top:10px;text-align:center;font-size:12px;color:var(--sub)"></div></div>
         <div class="card"><h3>🧠 情绪与躯体化</h3><div class="fg"><label>今日情绪 (1-5)</label><div style="display:flex;gap:8px;margin-top:4px"><button class="tag" onclick="selMood(1)">😞 1</button><button class="tag" onclick="selMood(2)">😔 2</button><button class="tag" onclick="selMood(3)">😐 3</button><button class="tag" onclick="selMood(4)">🙂 4</button><button class="tag" onclick="selMood(5)">😊 5</button></div></div><div class="fg"><label>躯体化程度</label><select id="somaLevel"><option value="none">🟢 没有</option><option value="mild">🟡 轻微</option><option value="moderate">🟠 中度</option><option value="severe">🔴 严重</option></select></div><div class="fg"><label>触发因素</label><div class="tags" id="trigTags"><span class="tag" onclick="this.classList.toggle('sel')">感情问题</span><span class="tag" onclick="this.classList.toggle('sel')">工作压力</span><span class="tag" onclick="this.classList.toggle('sel')">客户冲突</span><span class="tag" onclick="this.classList.toggle('sel')">睡眠不足</span><span class="tag" onclick="this.classList.toggle('sel')">饮食不规律</span><span class="tag" onclick="this.classList.toggle('sel')">莫名触发</span></div></div><div class="fg"><label>今日笔记</label><textarea id="moodNote" placeholder="哪怕写一句..." rows="2" oninput="autoSaveDraft()"></textarea></div><button class="btn btn-dark" onclick="saveMood()">💾 保存</button><div id="moodHistory" style="margin-top:10px"></div></div>
         <div class="card"><h3>⏰ 今日时间表</h3><div id="timeline"><div class="empty">还没有记录</div></div><div class="add-row" style="margin-top:10px"><input type="text" id="tlEvent" placeholder="做了什么？" onkeydown="if(event.key==='Enter')addTimeline()" oninput="autoSaveDraft()"><button onclick="addTimeline()">+</button></div></div>
     </div>
@@ -572,20 +644,20 @@ textarea{resize:vertical;min-height:55px}
 
 <nav class="bottom-nav">
     <button class="nav-item active" onclick="switchTab('work')"><span class="icon">📋</span>工作</button>
-    <button class="nav-item" onclick="switchTab('store')"><span class="icon">🏪</span>门店IP</button>
-    <button class="nav-item" onclick="switchTab('ip')"><span class="icon">👤</span>个人IP</button>
+    <button class="nav-item" onclick="switchTab('media')"><span class="icon">📱</span>自媒体</button>
+    <button class="nav-item" onclick="switchTab('memo')"><span class="icon">📝</span>备忘录</button>
     <button class="nav-item" onclick="switchTab('life')"><span class="icon">🧘</span>生活</button>
     <button class="nav-item" onclick="switchTab('settings')"><span class="icon">⚙️</span>设置</button>
 </nav>
 
 <script>
-const APP_VERSION='20260728v2';
+const APP_VERSION='20260728v3';
 const SUPABASE_URL='https://ffojcuwxoilihfkwskmr.supabase.co';
 const SUPABASE_KEY='sb_publishable_oflYYZKMqKlITynUYXFCkA_t_ft3Fbr';
 const SUPABASE_HEADERS={'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY,'Content-Type':'application/json'};
 const KEY='wb_v7';
 const DRAFT_KEY='wb_draft';
-const EMPTY={summaries:[],storeIdeas:[],storeDrafts:[],ipIdeas:[],ipDrafts:[],checks:{},water:{},moods:[],timeline:[]};
+const EMPTY={summaries:[],storeIdeas:[],storeDrafts:[],ipIdeas:[],ipDrafts:[],checks:{},water:{},moods:[],timeline:[],reviews:{},scripts:[],memos:[],weights:[],fitness:[],meds:{}};
 const BACKUP_KEY='wb_backup';
 const SYNC_LOG_KEY='wb_sync_log';
 const PENDING_QUEUE_KEY='wb_pending_ops';
@@ -593,24 +665,24 @@ const PENDING_QUEUE_KEY='wb_pending_ops';
 // ============ 模块配置 ============
 const DEFAULT_MODULES=[
     {id:'work',icon:'📋',label:'工作',locked:true},
-    {id:'store',icon:'🏪',label:'门店IP',locked:false},
-    {id:'ip',icon:'👤',label:'个人IP',locked:false},
+    {id:'media',icon:'📱',label:'自媒体',locked:false},
+    {id:'memo',icon:'📝',label:'备忘录',locked:false},
     {id:'life',icon:'🧘',label:'生活',locked:false},
     {id:'settings',icon:'⚙️',label:'设置',locked:true}
 ];
-let activeModules=JSON.parse(localStorage.getItem('wb_modules')||'["work","store","ip","life","settings"]');
+let activeModules=JSON.parse(localStorage.getItem('wb_modules')||'["work","media","memo","life","settings"]');
 
 // ============ 数据完整性校验 ============
 function validateData(data){
     var valid=true;
     var issues=[];
     if(!data||typeof data!=='object'){return {valid:false,issues:['数据为空或格式错误']};}
-    var required=['summaries','storeIdeas','storeDrafts','ipIdeas','ipDrafts','checks','water','moods','timeline'];
+    var required=['summaries','storeIdeas','storeDrafts','ipIdeas','ipDrafts','checks','water','moods','timeline','reviews','scripts','memos','weights','fitness','meds'];
     required.forEach(function(k){
-        if(!data[k]){data[k]=(k==='checks'||k==='water'?{}:[]);issues.push('缺少字段 '+k+' 已自动修复');}
+        if(!data[k]){data[k]=(k==='checks'||k==='water'||k==='meds'?{}:[]);issues.push('缺少字段 '+k+' 已自动修复');}
     });
     // 验证数组类型
-    ['summaries','storeIdeas','storeDrafts','ipIdeas','ipDrafts','moods','timeline'].forEach(function(k){
+    ['summaries','storeIdeas','storeDrafts','ipIdeas','ipDrafts','moods','timeline','reviews','scripts','memos','weights','fitness'].forEach(function(k){
         if(!Array.isArray(data[k])){data[k]=[];issues.push(k+' 不是数组，已重置');valid=false;}
     });
     // 验证ID完整性
@@ -968,7 +1040,7 @@ const T=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1
 const toast=m=>{const t=document.createElement('div');t.className='toast';t.textContent=m;document.body.appendChild(t);setTimeout(()=>t.remove(),2100)}
 const $$=id=>document.getElementById(id)
 const selTags=id=>Array.from($$(id).querySelectorAll('.tag.sel')).map(e=>e.textContent)
-const TAB_ORDER=['work','store','ip','life','settings'];
+const TAB_ORDER=['work','media','memo','life','settings'];
 function switchTab(tab){
     document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
     document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
@@ -979,16 +1051,169 @@ function switchTab(tab){
         var navItems=document.querySelectorAll('.nav-item');
         if(navItems[idx])navItems[idx].classList.add('active');
     }
-    $$('headerTitle').textContent=({'work':'📋 我的工作台','store':'🏪 门店IP','ip':'👤 个人IP','life':'🧘 生活','settings':'⚙️ 设置'})[tab]||'📋 我的工作台';
+    $$('headerTitle').textContent=({'work':'📋 我的工作台','media':'📱 自媒体','memo':'📝 备忘录','life':'🧘 生活','settings':'⚙️ 设置'})[tab]||'📋 我的工作台';
     document.querySelectorAll('.sidebar-item').forEach(function(si){si.classList.remove('active')});
     var si=document.querySelector('.sidebar-item[data-tab="'+tab+'"]');
     if(si)si.classList.add('active');
     if(tab==='work')refreshWork();
-    if(tab==='store')refreshStore();
-    if(tab==='ip')refreshIp();
+    if(tab==='media')refreshMedia();
     if(tab==='life')refreshLife();
 }
-function refreshAll(){refreshWork();refreshStore();refreshIp();refreshLife();renderSidebar();renderBottomNav()}
+function refreshAll(){refreshWork();refreshMedia();refreshLife();renderSidebar();renderBottomNav()}
+
+// ============ 自媒体板块（合并门店IP+个人IP+脚本工坊） ============
+function switchMediaTab(tab){
+    var panels=['mediaStorePanel','mediaIpPanel','mediaScriptPanel'];
+    var btns=[document.getElementById('mediaTabStore'),document.getElementById('mediaTabIp'),document.getElementById('mediaTabScript')];
+    var tabMap={'store':0,'ip':1,'script':2};
+    var idx=tabMap[tab];
+    panels.forEach(function(p,i){
+        var el=document.getElementById(p);
+        if(el)el.style.display=i===idx?'block':'none';
+    });
+    btns.forEach(function(b,i){
+        if(!b)return;
+        if(i===idx){b.classList.add('sel');b.style.background='var(--primary)';b.style.color='#fff';b.style.borderColor='var(--primary)'}
+        else{b.classList.remove('sel');b.style.background='var(--card)';b.style.color='var(--text)';b.style.borderColor='var(--border)'}
+    });
+    refreshMedia();
+}
+
+function refreshMedia(){
+    refreshStore();
+    refreshIp();
+    renderScriptLib();
+}
+
+// ============ 脚本工坊 ============
+function saveScript(){
+    var title=document.getElementById('scriptTitle').value.trim();
+    var content=document.getElementById('scriptContent').value.trim();
+    if(!title&&!content)return toast('请输入标题或内容');
+    var script={
+        id:Date.now().toString(),
+        date:T(),
+        cat:document.getElementById('scriptCat').value,
+        ip:document.getElementById('scriptIp').value,
+        title:title,
+        content:content
+    };
+    if(!D.scripts)D.scripts=[];
+    D.scripts.push(script);
+    save();clearDraft();
+    document.getElementById('scriptTitle').value='';
+    document.getElementById('scriptContent').value='';
+    renderScriptLib();
+    toast('✅ 脚本已保存');
+}
+function deleteScript(id){
+    if(!confirm('删除这个脚本？'))return;
+    D.scripts=D.scripts.filter(function(s){return s.id!==id});
+    save();renderScriptLib();toast('已删除');
+}
+function copyScript(id){
+    var s=D.scripts.find(function(x){return x.id===id});
+    if(s)navigator.clipboard.writeText(s.content).then(function(){toast('✅ 已复制')});
+}
+function renderScriptLib(){
+    var lib=document.getElementById('scriptLib');
+    if(!lib)return;
+    if(!D.scripts||!D.scripts.length){lib.innerHTML='<div class="empty">还没有保存脚本</div>';return}
+    var catIcons={'开场白模板':'🎬','日常vlog脚本':'📹','知识科普脚本':'📚','情绪共鸣脚本':'💬','金句收藏':'✨','爆款结构参考':'🔥','门店推广脚本':'🏪'};
+    var ipLabels={'store':'🏪 门店','ip':'🎭 个人'};
+    var scripts=[...D.scripts].reverse();
+    var html='';
+    var lastDate='';
+    scripts.forEach(function(s){
+        if(s.date!==lastDate){
+            html+='<div style="font-size:12px;color:var(--sub);margin:10px 0 6px;font-weight:600">📅 '+s.date+'</div>';
+            lastDate=s.date;
+        }
+        html+='<div class="idea-card">';
+        html+='<div class="idea-title">'+(catIcons[s.cat]||'📝')+' '+(s.title||'(无标题)')+' <span style="font-size:11px;color:var(--sub)">'+(ipLabels[s.ip]||'')+'</span></div>';
+        html+='<div class="idea-meta">'+s.cat+'</div>';
+        if(s.content)html+='<div class="idea-script">'+s.content.substring(0,150)+(s.content.length>150?'...':'')+'</div>';
+        html+='<div style="display:flex;gap:6px"><button class="btn btn-xs btn-green" onclick="copyScript(\''+s.id+'\')">📋 复制</button><button class="btn btn-xs btn-red" onclick="deleteScript(\''+s.id+'\')">删除</button></div>';
+        html+='</div>';
+    });
+    lib.innerHTML=html;
+}
+
+// ============ 备忘录 ============
+function addMemo(){
+    var content=document.getElementById('memoContent').value.trim();
+    if(!content)return toast('请输入内容');
+    var tags=[];
+    document.querySelectorAll('#memoTagSel .tag.sel').forEach(function(t){tags.push(t.textContent)});
+    var memo={
+        id:Date.now().toString(),
+        date:T(),
+        time:String(new Date().getHours()).padStart(2,'0')+':'+String(new Date().getMinutes()).padStart(2,'0'),
+        content:content,
+        tags:tags,
+        pinned:false
+    };
+    if(!D.memos)D.memos=[];
+    D.memos.push(memo);
+    save();clearDraft();
+    document.getElementById('memoContent').value='';
+    document.querySelectorAll('#memoTagSel .tag.sel').forEach(function(t){t.classList.remove('sel')});
+    renderMemos();
+    toast('✅ 备忘已保存');
+}
+function clearMemoForm(){
+    document.getElementById('memoContent').value='';
+    document.querySelectorAll('#memoTagSel .tag.sel').forEach(function(t){t.classList.remove('sel')});
+}
+function toggleMemoPin(id){
+    var m=D.memos.find(function(x){return x.id===id});
+    if(m){m.pinned=!m.pinned;save();renderMemos();}
+}
+function deleteMemo(id){
+    if(!confirm('删除这条备忘？'))return;
+    D.memos=D.memos.filter(function(x){return x.id!==id});
+    save();renderMemos();toast('已删除');
+}
+function renderMemos(){
+    var container=document.getElementById('memoList');
+    if(!container)return;
+    if(!D.memos||!D.memos.length){container.innerHTML='<div class="empty">还没有备忘录</div>';return}
+    var search=(document.getElementById('memoSearch')||{}).value||'';
+    var filter=(document.getElementById('memoFilter')||{}).value||'all';
+    var memos=[...D.memos].reverse();
+    // 过滤
+    memos=memos.filter(function(m){
+        if(search&&m.content.toLowerCase().indexOf(search.toLowerCase())<0)return false;
+        if(filter!=='all'){
+            var tagMap={'work':'💡 工作想法','life':'🌿 生活灵感','todo':'✅ 待办','emotion':'🧠 情绪记录'};
+            if(m.tags.indexOf(tagMap[filter])<0)return false;
+        }
+        return true;
+    });
+    // 置顶排前
+    memos.sort(function(a,b){return (b.pinned?1:0)-(a.pinned?1:0)});
+    var html='';
+    var lastDate='';
+    memos.forEach(function(m){
+        if(m.date!==lastDate){
+            html+='<div style="font-size:12px;color:var(--sub);margin:10px 0 6px;font-weight:600">📅 '+m.date+'</div>';
+            lastDate=m.date;
+        }
+        html+='<div class="idea-card" style="position:relative">';
+        if(m.pinned)html+='<span style="position:absolute;top:8px;right:8px;font-size:11px;color:var(--accent)">📌 置顶</span>';
+        html+='<div style="font-size:14px;line-height:1.6;white-space:pre-wrap;word-break:break-all;margin-bottom:6px">'+m.content.replace(/</g,'&lt;')+'</div>';
+        html+='<div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:6px">';
+        m.tags.forEach(function(t){html+='<span style="font-size:11px;padding:2px 8px;border-radius:10px;background:#f5f5f0;color:var(--sub)">'+t+'</span>'});
+        html+='<span style="font-size:11px;color:#ccc;margin-left:auto">'+m.time+'</span>';
+        html+='</div>';
+        html+='<div style="display:flex;gap:6px">';
+        html+='<button class="btn btn-xs btn-outline" onclick="toggleMemoPin(\''+m.id+'\')">'+(m.pinned?'取消置顶':'📌 置顶')+'</button>';
+        html+='<button class="btn btn-xs btn-red" onclick="deleteMemo(\''+m.id+'\')">删除</button>';
+        html+='</div>';
+        html+='</div>';
+    });
+    container.innerHTML=html;
+}
 
 const d=new Date();const days=['周日','周一','周二','周三','周四','周五','周六'];
 $$('storePlanDate').value=T();$$('ipPlanDate').value=T();
@@ -1852,7 +2077,295 @@ function refreshLife(){
     const tl=$$('timeline');const tls=[...D.timeline].reverse().filter(t=>t.date===today);
     if(!tls.length)tl.innerHTML='<div class="empty">记录今天做了什么</div>';
     else tl.innerHTML=tls.map(t=>`<div class="timeline-item"><span class="tl-time">${t.time}</span><span class="tl-content">${t.event}</span></div>`).join('');
+    // 更新工作复盘统计
+    renderWorkReview();
+    // 更新每日复盘日期和历史
+    renderReviewSection();
+    renderWeights();
+    renderFitness();
+    renderMeds();
 }
+
+// ============ 工作复盘（自动统计） ============
+function renderWorkReview(){
+    const today=T();
+    // 今日课后总结数
+    const todaySums=D.summaries.filter(s=>s.date===today);
+    const sumCount=todaySums.length;
+    // 今日服务客户数（去重）
+    const clientSet=new Set(todaySums.map(s=>s.client));
+    const clientCount=clientSet.size;
+    // 门店IP灵感（今日新增未使用）
+    const storeIdeaCount=D.storeIdeas.filter(i=>!i.used).length;
+    // 个人IP灵感（今日新增未使用）
+    const ipIdeaCount=D.ipIdeas.filter(i=>!i.used).length;
+    // 门店IP草稿（未发布的今日）
+    const storeDraftCount=D.storeDrafts.filter(d=>d.date===today&&d.status!=='✅ 已发布').length;
+    // 个人IP草稿（未发布的今日）
+    const ipDraftCount=D.ipDrafts.filter(d=>d.date===today&&d.status!=='✅ 已发布').length;
+    // 门店IP已发布（今日）
+    const storePubCount=D.storeDrafts.filter(d=>d.date===today&&d.status==='✅ 已发布').length;
+    // 个人IP已发布（今日）
+    const ipPubCount=D.ipDrafts.filter(d=>d.date===today&&d.status==='✅ 已发布').length;
+
+    const el=function(id,text){var e=document.getElementById(id);if(e)e.textContent=text};
+    el('wrSums',sumCount+' 份');
+    el('wrClients',clientCount+' 人');
+    el('wrStoreIdeas',storeIdeaCount+' 条');
+    el('wrIpIdeas',ipIdeaCount+' 条');
+    el('wrStoreDrafts',storeDraftCount+' 条');
+    el('wrIpDrafts',ipDraftCount+' 条');
+    el('wrStorePub',storePubCount+' 条');
+    el('wrIpPub',ipPubCount+' 条');
+
+    // 鼓励语
+    const total=sumCount+clientCount+storeIdeaCount+ipIdeaCount+storeDraftCount+ipDraftCount+storePubCount+ipPubCount;
+    var msg='';
+    if(total===0) msg='新的一天刚开始，慢慢来，不急 🌱';
+    else if(total<=3) msg='今天已经在行动了，很好 👏';
+    else if(total<=6) msg='工作有在推进，今天的你很棒 🌿';
+    else if(total<=10) msg='今天做了这么多，你已经很优秀了 💪';
+    else msg='今天的你简直是超人，辛苦了！🌟';
+    var enc=document.getElementById('workReviewEncourage');
+    if(enc)enc.textContent=msg;
+}
+
+// ============ 每日复盘 ============
+function renderReviewSection(){
+    const today=T();
+    var rd=document.getElementById('reviewDate');
+    if(rd)rd.textContent=today+' 复盘';
+    // 恢复今日已保存的复盘内容
+    var rv=D.reviews&&D.reviews[today]?D.reviews[today]:null;
+    var els=['rvBest','rvBody','rvIdea','rvPlan'];
+    var keys=['best','body','idea','plan'];
+    for(var i=0;i<els.length;i++){
+        var el=document.getElementById(els[i]);
+        if(el&&rv)el.value=rv[keys[i]]||'';
+    }
+    // 渲染历史复盘（最近5天）
+    var rh=document.getElementById('reviewHistory');
+    if(!rh)return;
+    var reviews=(D.reviews?Object.keys(D.reviews).sort().reverse().slice(0,5):[]);
+    if(!reviews.length){rh.innerHTML='';return}
+    var em={5:'😊',4:'🙂',3:'😐',2:'😔',1:'😞'};
+    rh.innerHTML='<hr style="margin:10px 0;border-color:var(--border)"><h4 style="font-size:12px;margin:8px 0;color:var(--sub)">📅 最近复盘记录</h4>'+reviews.map(function(date){
+        var r=D.reviews[date];
+        var mood=r.mood?em[r.mood]||'':'';
+        return '<div style="font-size:12px;padding:6px 0;border-bottom:1px solid #f5f5f5;background:var(--bg);border-radius:6px;padding:8px;margin-bottom:4px">'+
+        '<div style="font-weight:600;color:var(--primary-dark)">'+mood+' '+date+'</div>'+
+        (r.best?'<div style="color:#666;margin-top:2px">🌟 '+r.best.substring(0,80)+'</div>':'')+
+        (r.plan?'<div style="color:#999;margin-top:2px">📌 明天：'+r.plan.substring(0,60)+'</div>':'')+
+        '</div>';
+    }).join('');
+}
+
+function saveReview(){
+    const today=T();
+    if(!D.reviews)D.reviews={};
+    // 获取当前情绪打分
+    var moodEl=document.getElementById('moodNote');
+    var mood=currentMood||3;
+    D.reviews[today]={
+        best:(document.getElementById('rvBest').value||'').trim(),
+        body:(document.getElementById('rvBody').value||'').trim(),
+        idea:(document.getElementById('rvIdea').value||'').trim(),
+        plan:(document.getElementById('rvPlan').value||'').trim(),
+        mood:mood,
+        water:D.water[today]||0,
+        checks:D.checks[today]?Object.values(D.checks[today]).filter(v=>v).length:0
+    };
+    save();clearDraft();
+    toast('✅ 复盘已保存');
+    renderReviewSection();
+}
+
+// ============ 体重记录 ============
+function saveWeight(){
+    var w=parseFloat(document.getElementById('weightInput').value);
+    if(!w||w<30||w>200)return toast('请输入有效体重');
+    var today=T();
+    if(!D.weights)D.weights=[];
+    // 同一天只保留最新
+    D.weights=D.weights.filter(function(x){return x.date!==today});
+    D.weights.push({date:today,weight:w});
+    save();clearDraft();
+    document.getElementById('weightInput').value='';
+    renderWeights();
+    toast('✅ 体重已记录');
+}
+function deleteWeight(date){
+    D.weights=D.weights.filter(function(x){return x.date!==date});
+    save();renderWeights();toast('已删除');
+}
+function renderWeights(){
+    var wc=document.getElementById('weightChart');
+    var wh=document.getElementById('weightHistory');
+    var wt=document.getElementById('weightTrend');
+    if(!D.weights||!D.weights.length){
+        if(wc)wc.innerHTML='';
+        if(wh)wh.innerHTML='';
+        if(wt)wt.textContent='还没有记录';
+        return;
+    }
+    var weights=[...D.weights].sort(function(a,b){return a.date.localeCompare(b.date)});
+    var latest=weights[weights.length-1].weight;
+    var prev=weights.length>1?weights[weights.length-2].weight:null;
+    if(wt){
+        wt.textContent='最新 '+latest+'kg'+(prev?' ('+(latest>prev?'+'+(latest-prev).toFixed(1):(latest-prev).toFixed(1))+'kg)':'');
+    }
+    // 简易折线图（用CSS实现）
+    if(wc){
+        var last14=weights.slice(-14);
+        var min=Math.min.apply(null,last14.map(function(x){return x.weight}));
+        var max=Math.max.apply(null,last14.map(function(x){return x.weight}));
+        var range=max-min||1;
+        var chartH=80;
+        var html='<div style="position:relative;height:'+(chartH+20)+'px;width:100%;min-width:'+(last14.length*36)+'px">';
+        last14.forEach(function(w,i){
+            var pct=chartH-((w.weight-min)/range)*chartH;
+            var x=i*36+18;
+            var isLast=i===last14.length-1;
+            if(i>0){
+                var prevW=last14[i-1].weight;
+                var prevPct=chartH-((prevW-min)/range)*chartH;
+                html+='<svg style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none"><line x1="'+(x-36)+'" y1="'+prevPct+'" x2="'+x+'" y2="'+pct+'" stroke="var(--accent)" stroke-width="2"/></svg>';
+            }
+            html+='<div style="position:absolute;left:'+(x-6)+';top:'+pct+'px;width:12px;height:12px;border-radius:50%;background:'+(isLast?'var(--primary)':'var(--accent)')+';border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.1)"></div>';
+            if(i%2===0)html+='<div style="position:absolute;left:'+(x-12)+';bottom:0;width:36px;text-align:center;font-size:9px;color:#bbb;white-space:nowrap">'+w.date.slice(5)+'</div>';
+        });
+        html+='</div>';
+        wc.innerHTML=html;
+    }
+    // 历史列表
+    if(wh){
+        var recent=[...weights].reverse().slice(0,7);
+        wh.innerHTML='<hr style="margin:8px 0;border-color:var(--border)">'+recent.map(function(w){
+            return '<div style="display:flex;justify-content:space-between;padding:3px 0;font-size:12px"><span>'+w.date+'</span><span style="font-weight:600;color:var(--primary)">'+w.weight+'kg</span></div>';
+        }).join('');
+    }
+}
+
+// ============ 运动记录 ============
+function autoCalcCalorie(){
+    var s=parseInt(document.getElementById('strengthMin').value)||0;
+    var c=parseInt(document.getElementById('cardioMin').value)||0;
+    // 力量训练约6kcal/min，有氧约8kcal/min
+    var cal=s*6+c*8;
+    document.getElementById('calorieDisplay').textContent=cal+' kcal';
+}
+function saveFitness(){
+    var s=parseInt(document.getElementById('strengthMin').value)||0;
+    var c=parseInt(document.getElementById('cardioMin').value)||0;
+    if(!s&&!c)return toast('请输入运动时间');
+    var today=T();
+    if(!D.fitness)D.fitness=[];
+    var existing=D.fitness.find(function(x){return x.date===today});
+    if(existing){existing.strength=s;existing.cardio=c;existing.calories=s*6+c*8}
+    else{D.fitness.push({date:today,strength:s,cardio:c,calories:s*6+c*8})}
+    save();clearDraft();
+    document.getElementById('strengthMin').value='';
+    document.getElementById('cardioMin').value='';
+    document.getElementById('calorieDisplay').textContent='0 kcal';
+    renderFitness();
+    toast('✅ 运动已记录');
+}
+function deleteFitness(date){
+    D.fitness=D.fitness.filter(function(x){return x.date!==date});
+    save();renderFitness();toast('已删除');
+}
+function renderFitness(){
+    var fs=document.getElementById('fitnessSummary');
+    var fc=document.getElementById('fitnessChart');
+    var fh=document.getElementById('fitnessHistory');
+    if(!D.fitness||!D.fitness.length){
+        if(fs)fs.textContent='还没有记录';
+        if(fc)fc.innerHTML='';
+        if(fh)fh.innerHTML='';
+        return;
+    }
+    var all=[...D.fitness].sort(function(a,b){return a.date.localeCompare(b.date)});
+    // 本周统计
+    var now=new Date();
+    var weekStart=new Date(now);weekStart.setDate(now.getDate()-now.getDay());weekStart.setHours(0,0,0,0);
+    var weekStr=weekStart.getFullYear()+'-'+String(weekStart.getMonth()+1).padStart(2,'0')+'-'+String(weekStart.getDate()).padStart(2,'0');
+    var weekData=all.filter(function(f){return f.date>=weekStr});
+    var weekDays=weekData.length;
+    var weekStrength=weekData.reduce(function(a,b){return a+b.strength},0);
+    var weekCardio=weekData.reduce(function(a,b){return a+b.cardio},0);
+    var weekCal=weekData.reduce(function(a,b){return a+b.calories},0);
+    if(fs)fs.textContent='本周运动'+weekDays+'天 · 力量'+weekStrength+'分钟 · 有氧'+weekCardio+'分钟 · 消耗'+weekCal+'kcal';
+    // 柱状图（最近7天）
+    if(fc){
+        var last7=all.slice(-7);
+        var maxMin=Math.max.apply(null,last7.map(function(x){return x.strength+x.cardio}))||1;
+        var chartH=70;
+        var html='<div style="display:flex;align-items:flex-end;gap:4px;height:'+(chartH+20)+'px;padding:0 4px">';
+        last7.forEach(function(f,i){
+            var total=f.strength+f.cardio;
+            var h=Math.max(4,(total/maxMin)*chartH);
+            var isToday=f.date===T();
+            html+='<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px">';
+            html+='<div style="font-size:9px;color:var(--warmup)">'+f.calories+'</div>';
+            html+='<div style="width:100%;max-width:28px;height:'+h+'px;border-radius:4px 4px 0 0;background:'+(isToday?'var(--primary)':'var(--accent)')+';position:relative;overflow:hidden">';
+            if(f.strength>0)html+='<div style="position:absolute;bottom:0;width:100%;height:'+(f.strength/total*100)+'%;background:var(--warmup);opacity:0.6"></div>';
+            html+='</div>';
+            html+='<div style="font-size:8px;color:#bbb">'+f.date.slice(8)+'</div>';
+            html+='</div>';
+        });
+        html+='</div><div style="display:flex;gap:8px;justify-content:center;margin-top:4px"><span style="font-size:10px;color:var(--sub)">■ 力量</span><span style="font-size:10px;color:var(--sub)">■ 有氧</span></div>';
+        fc.innerHTML=html;
+    }
+    // 历史
+    if(fh){
+        var recent=[...all].reverse().slice(0,7);
+        fh.innerHTML='<hr style="margin:8px 0;border-color:var(--border)">'+recent.map(function(f){
+            return '<div style="display:flex;justify-content:space-between;padding:3px 0;font-size:12px"><span>'+f.date+'</span><span style="color:var(--sub)">力量'+f.strength+'min · 有氧'+f.cardio+'min · </span><span style="font-weight:600;color:var(--warmup)">'+f.calories+'kcal</span></div>';
+        }).join('');
+    }
+}
+
+// ============ 吃药打卡 ============
+function toggleMed(period){
+    var today=T();
+    if(!D.meds)D.meds={};
+    if(!D.meds[today])D.meds[today]={morning:false,noon:false,evening:false};
+    D.meds[today][period]=!D.meds[today][period];
+    save();
+    renderMeds();
+    toast(D.meds[today][period]?'✅ 已打卡':'已取消');
+}
+function renderMeds(){
+    var today=T();
+    var med=D.meds&&D.meds[today]?D.meds[today]:{morning:false,noon:false,evening:false};
+    var items=[
+        {key:'morning',label:'medMorning',btn:'medBtnM'},
+        {key:'noon',label:'medNoon',btn:'medBtnN'},
+        {key:'evening',label:'medEvening',btn:'medBtnE'}
+    ];
+    items.forEach(function(item){
+        var el=document.getElementById(item.label);
+        var btn=document.getElementById(item.btn);
+        if(el)el.textContent=med[item.key]?'✅ 已打卡':'未打卡';
+        if(el)el.style.color=med[item.key]?'var(--primary)':'#ccc';
+        if(btn){
+            if(med[item.key]){btn.textContent='取消';btn.style.background='var(--primary)';btn.style.color='#fff';btn.style.borderColor='var(--primary)'}
+            else{btn.textContent='打卡';btn.style.background='';btn.style.color='';btn.style.borderColor=''}
+        }
+    });
+    // 连续打卡天数
+    var streak=0;
+    var d=new Date();
+    while(true){
+        var ds=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+        var m=D.meds&&D.meds[ds]?D.meds[ds]:null;
+        if(m&&m.morning&&m.noon&&m.evening){streak++;d.setDate(d.getDate()-1)}
+        else break;
+    }
+    var streakEl=document.getElementById('medStreak');
+    if(streakEl)streakEl.textContent=streak>0?'🔥 连续按时吃药 '+streak+' 天':'开始连续打卡吧 💪';
+}
+
 function toggleCheck(id){const today=T();if(!D.checks[today])D.checks[today]={};D.checks[today][id]=!D.checks[today][id];save();refreshLife()}
 function drinkWater(n){const today=T();D.water[today]=D.water[today]===n?n-1:n;save();refreshLife()}
 let currentMood=3;
@@ -1889,6 +2402,12 @@ function importData(){
         if(!D.water)D.water={};
         if(!D.moods)D.moods=[];
         if(!D.timeline)D.timeline=[];
+        if(!D.reviews)D.reviews={};
+        if(!D.scripts)D.scripts=[];
+        if(!D.memos)D.memos=[];
+        if(!D.weights)D.weights=[];
+        if(!D.fitness)D.fitness=[];
+        if(!D.meds)D.meds={};
         save();
         refreshAll();
         $$('importBox').value='';
