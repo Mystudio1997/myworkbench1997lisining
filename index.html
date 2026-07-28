@@ -431,6 +431,7 @@ textarea{resize:vertical;min-height:55px}
             <button class="tag sel" id="mediaTabStore" onclick="switchMediaTab('store')" style="padding:8px 18px;font-size:14px;border-radius:20px;border:1.5px solid var(--border);background:var(--primary);color:#fff;cursor:pointer">🏪 门店IP</button>
             <button class="tag" id="mediaTabIp" onclick="switchMediaTab('ip')" style="padding:8px 18px;font-size:14px;border-radius:20px;border:1.5px solid var(--border);background:var(--card);color:var(--text);cursor:pointer">🎭 个人IP</button>
             <button class="tag" id="mediaTabScript" onclick="switchMediaTab('script')" style="padding:8px 18px;font-size:14px;border-radius:20px;border:1.5px solid var(--border);background:var(--card);color:var(--text);cursor:pointer">📖 脚本工坊</button>
+            <button class="tag" id="mediaTabHot" onclick="switchMediaTab('hot')" style="padding:8px 18px;font-size:14px;border-radius:20px;border:1.5px solid var(--border);background:var(--card);color:var(--text);cursor:pointer">🔥 每日热点</button>
         </div>
         <!-- 门店IP子面板 -->
         <div id="mediaStorePanel">
@@ -501,6 +502,29 @@ textarea{resize:vertical;min-height:55px}
                 <button class="btn btn-dark" onclick="saveScript()">💾 保存脚本</button>
             </div>
             <div class="card"><h3>📚 脚本库</h3><div id="scriptLib"><div class="empty">还没有保存脚本</div></div></div>
+        </div>
+        <!-- 每日热点子面板 -->
+        <div id="mediaHotPanel" style="display:none">
+            <div class="card" style="background:linear-gradient(135deg,#fff5f0,#faf7f2);border-color:#f0d4c4">
+                <h3>🔥 每日热点推荐</h3>
+                <div class="sub">每天早上9点自动推送与你两个IP方向相关的热门内容</div>
+            </div>
+            <div class="card">
+                <div style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap">
+                    <button class="tag sel" id="hotFilterAll" onclick="filterHot('all',this)" style="padding:6px 14px;font-size:13px;border-radius:18px;border:1.5px solid var(--primary);background:var(--primary);color:#fff;cursor:pointer">全部</button>
+                    <button class="tag" id="hotFilterStore" onclick="filterHot('store',this)" style="padding:6px 14px;font-size:13px;border-radius:18px;border:1.5px solid var(--border);background:var(--card);color:var(--text);cursor:pointer">🏪 门店IP</button>
+                    <button class="tag" id="hotFilterIp" onclick="filterHot('ip',this)" style="padding:6px 14px;font-size:13px;border-radius:18px;border:1.5px solid var(--border);background:var(--card);color:var(--text);cursor:pointer">🎭 个人IP</button>
+                </div>
+                <div style="display:flex;gap:6px;margin-bottom:10px">
+                    <button class="btn btn-sm btn-green" onclick="saveHotLink()">📌 收藏当前</button>
+                    <button class="btn btn-sm btn-outline" onclick="addHotLink()">➕ 手动添加</button>
+                </div>
+                <div id="hotList"><div class="empty">还没有热点内容，每天早上9点会自动推送</div></div>
+            </div>
+            <div class="card">
+                <h3>📌 已收藏内容</h3>
+                <div id="savedHotList"><div class="empty">还没有收藏的内容</div></div>
+            </div>
         </div>
     </div>
 
@@ -657,7 +681,7 @@ const SUPABASE_KEY='sb_publishable_oflYYZKMqKlITynUYXFCkA_t_ft3Fbr';
 const SUPABASE_HEADERS={'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY,'Content-Type':'application/json'};
 const KEY='wb_v7';
 const DRAFT_KEY='wb_draft';
-const EMPTY={summaries:[],storeIdeas:[],storeDrafts:[],ipIdeas:[],ipDrafts:[],checks:{},water:{},moods:[],timeline:[],reviews:{},scripts:[],memos:[],weights:[],fitness:[],meds:{}};
+const EMPTY={summaries:[],storeIdeas:[],storeDrafts:[],ipIdeas:[],ipDrafts:[],checks:{},water:{},moods:[],timeline:[],reviews:{},scripts:[],memos:[],weights:[],fitness:[],meds:{},hotLinks:[]};
 const BACKUP_KEY='wb_backup';
 const SYNC_LOG_KEY='wb_sync_log';
 const PENDING_QUEUE_KEY='wb_pending_ops';
@@ -677,12 +701,12 @@ function validateData(data){
     var valid=true;
     var issues=[];
     if(!data||typeof data!=='object'){return {valid:false,issues:['数据为空或格式错误']};}
-    var required=['summaries','storeIdeas','storeDrafts','ipIdeas','ipDrafts','checks','water','moods','timeline','reviews','scripts','memos','weights','fitness','meds'];
+    var required=['summaries','storeIdeas','storeDrafts','ipIdeas','ipDrafts','checks','water','moods','timeline','reviews','scripts','memos','weights','fitness','meds','hotLinks'];
     required.forEach(function(k){
         if(!data[k]){data[k]=(k==='checks'||k==='water'||k==='meds'?{}:[]);issues.push('缺少字段 '+k+' 已自动修复');}
     });
     // 验证数组类型
-    ['summaries','storeIdeas','storeDrafts','ipIdeas','ipDrafts','moods','timeline','reviews','scripts','memos','weights','fitness'].forEach(function(k){
+    ['summaries','storeIdeas','storeDrafts','ipIdeas','ipDrafts','moods','timeline','reviews','scripts','memos','weights','fitness','hotLinks'].forEach(function(k){
         if(!Array.isArray(data[k])){data[k]=[];issues.push(k+' 不是数组，已重置');valid=false;}
     });
     // 验证ID完整性
@@ -1063,9 +1087,9 @@ function refreshAll(){refreshWork();refreshMedia();refreshLife();renderSidebar()
 
 // ============ 自媒体板块（合并门店IP+个人IP+脚本工坊） ============
 function switchMediaTab(tab){
-    var panels=['mediaStorePanel','mediaIpPanel','mediaScriptPanel'];
-    var btns=[document.getElementById('mediaTabStore'),document.getElementById('mediaTabIp'),document.getElementById('mediaTabScript')];
-    var tabMap={'store':0,'ip':1,'script':2};
+    var panels=['mediaStorePanel','mediaIpPanel','mediaScriptPanel','mediaHotPanel'];
+    var btns=[document.getElementById('mediaTabStore'),document.getElementById('mediaTabIp'),document.getElementById('mediaTabScript'),document.getElementById('mediaTabHot')];
+    var tabMap={'store':0,'ip':1,'script':2,'hot':3};
     var idx=tabMap[tab];
     panels.forEach(function(p,i){
         var el=document.getElementById(p);
@@ -1083,6 +1107,7 @@ function refreshMedia(){
     refreshStore();
     refreshIp();
     renderScriptLib();
+    renderHotLinks();
 }
 
 // ============ 脚本工坊 ============
@@ -1137,6 +1162,99 @@ function renderScriptLib(){
         html+='</div>';
     });
     lib.innerHTML=html;
+}
+
+// ============ 每日热点 ============
+var __hotFilter='all';
+function filterHot(filter,btn){
+    __hotFilter=filter;
+    ['hotFilterAll','hotFilterStore','hotFilterIp'].forEach(function(id){
+        var el=document.getElementById(id);
+        if(el){el.classList.remove('sel');el.style.background='var(--card)';el.style.color='var(--text)';el.style.borderColor='var(--border)'}
+    });
+    if(btn){btn.classList.add('sel');btn.style.background='var(--primary)';btn.style.color='#fff';btn.style.borderColor='var(--primary)'}
+    renderHotLinks();
+}
+function addHotLink(){
+    var title=prompt('输入标题：');
+    if(!title)return;
+    var url=prompt('输入链接（可选）：')||'';
+    var ip=prompt('所属IP？输入 store=门店 或 ip=个人')||'ip';
+    var reason=prompt('推荐理由（可选）：')||'';
+    if(!D.hotLinks)D.hotLinks=[];
+    D.hotLinks.push({id:Date.now().toString(),date:T(),title:title,url:url,ip:ip,reason:reason,saved:false});
+    save();renderHotLinks();toast('✅ 已添加');
+}
+function saveHotLink(){
+    // 把最近一条未收藏的标记为已收藏
+    if(!D.hotLinks||!D.hotLinks.length)return toast('没有可收藏的内容');
+    var unsaved=D.hotLinks.filter(function(h){return !h.saved});
+    if(!unsaved.length)return toast('都收藏过了');
+    unsaved[0].saved=true;
+    save();renderHotLinks();toast('✅ 已收藏');
+}
+function toggleSaveHot(id){
+    var h=D.hotLinks.find(function(x){return x.id===id});
+    if(h){h.saved=!h.saved;save();renderHotLinks()}
+}
+function deleteHot(id){
+    if(!confirm('删除这条？'))return;
+    D.hotLinks=D.hotLinks.filter(function(x){return x.id!==id});
+    save();renderHotLinks();toast('已删除');
+}
+function renderHotLinks(){
+    var list=document.getElementById('hotList');
+    var saved=document.getElementById('savedHotList');
+    if(!D.hotLinks||!D.hotLinks.length){
+        if(list)list.innerHTML='<div class="empty">还没有热点内容，每天早上9点会自动推送</div>';
+        if(saved)saved.innerHTML='<div class="empty">还没有收藏的内容</div>';
+        return;
+    }
+    var links=[...D.hotLinks].reverse();
+    // 过滤
+    if(__hotFilter!=='all')links=links.filter(function(h){return h.ip===__hotFilter});
+    // 分为未收藏和已收藏
+    var unsaved=links.filter(function(h){return !h.saved});
+    var savedLinks=links.filter(function(h){return h.saved});
+    if(list){
+        if(!unsaved.length){list.innerHTML='<div class="empty">当前分类没有新内容</div>'}
+        else{
+            var ipLabels={'store':'🏪 门店IP','ip':'🎭 个人IP'};
+            var ipColors={'store':'var(--primary)','ip':'var(--purple)'};
+            list.innerHTML=unsaved.map(function(h){
+                var html='<div class="idea-card">';
+                html+='<div class="idea-title">'+(h.title||'(无标题)')+'</div>';
+                html+='<div class="idea-meta"><span style="color:'+(ipColors[h.ip]||'#999')+';font-weight:600">'+(ipLabels[h.ip]||'')+'</span> · '+h.date+(h.platform?' · '+h.platform:'')+'</div>';
+                if(h.reason)html+='<div style="font-size:12px;color:var(--sub);margin:4px 0">💡 '+h.reason+'</div>';
+                html+='<div style="display:flex;gap:6px;flex-wrap:wrap">';
+                if(h.url)html+='<a href="'+h.url+'" target="_blank" style="font-size:12px;color:var(--primary);text-decoration:none">🔗 打开链接</a>';
+                html+='<button class="btn btn-xs btn-green" onclick="toggleSaveHot(\''+h.id+'\')">📌 收藏</button>';
+                html+='<button class="btn btn-xs btn-red" onclick="deleteHot(\''+h.id+'\')">删除</button>';
+                html+='</div>';
+                html+='</div>';
+                return html;
+            }).join('');
+        }
+    }
+    if(saved){
+        if(!savedLinks.length){saved.innerHTML='<div class="empty">还没有收藏的内容</div>'}
+        else{
+            saved.innerHTML=savedLinks.map(function(h){
+                var ipLabels={'store':'🏪 门店IP','ip':'🎭 个人IP'};
+                var html='<div class="idea-card">';
+                html+='<div class="idea-title">📌 '+(h.title||'(无标题)')+'</div>';
+                html+='<div class="idea-meta"><span style="font-size:11px">'+(ipLabels[h.ip]||'')+'</span> · '+h.date+'</div>';
+                if(h.reason)html+='<div style="font-size:12px;color:var(--sub);margin:4px 0">💡 '+h.reason+'</div>';
+                html+='<div style="display:flex;gap:6px;flex-wrap:wrap">';
+                if(h.url)html+='<a href="'+h.url+'" target="_blank" style="font-size:12px;color:var(--primary);text-decoration:none">🔗 打开链接</a>';
+                html+='<button class="btn btn-xs btn-outline" onclick="toggleSaveHot(\''+h.id+'\')">取消收藏</button>';
+                html+='<button class="btn btn-xs btn-red" onclick="deleteHot(\''+h.id+'\')">删除</button>';
+                html+='</div>';
+                html+='</div>';
+                return html;
+            }).join('');
+        }
+    }
 }
 
 // ============ 备忘录 ============
@@ -2408,6 +2526,7 @@ function importData(){
         if(!D.weights)D.weights=[];
         if(!D.fitness)D.fitness=[];
         if(!D.meds)D.meds={};
+        if(!D.hotLinks)D.hotLinks=[];
         save();
         refreshAll();
         $$('importBox').value='';
