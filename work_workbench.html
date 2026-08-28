@@ -530,6 +530,27 @@ textarea{resize:vertical;min-height:55px}
 <div id="footerVersion" style="text-align:center;font-size:10px;color:#ccc;padding:4px 0 8px">v<span id="footerVerText"></span></div>
 
 <script>
+// ===== 全局错误保护（必须在最前面）=====
+function _showErr(fn,e){
+    try{
+    var msg=e&&e.message?e.message:String(e);
+    console.error('['+fn+']',e);
+    var d=document.createElement('div');
+    d.style.cssText='position:fixed;top:0;left:0;right:0;background:#ff4444;color:#fff;padding:12px 14px;font-size:13px;z-index:99999;text-align:center;line-height:1.4';
+    d.textContent='['+fn+'] '+msg;
+    document.body.appendChild(d);
+    setTimeout(function(){try{d.remove()}catch(x){}},8000);
+    }catch(x){}
+}
+window.onerror=function(msg,url,line,col,err){
+    _showErr('window.onerror',err||new Error(msg));
+    return false;
+};
+window.addEventListener('unhandledrejection',function(e){
+    _showErr('unhandledPromise',e.reason||new Error('Promise rejected'));
+});
+// 安全的DOM访问
+function _safe(id){return document.getElementById(id)}
 const APP_VERSION='20260828v1';
 const SUPABASE_URL='https://ffojcuwxoilihfkwskmr.supabase.co';
 const SUPABASE_KEY='sb_publishable_oflYYZKMqKlITynUYXFCkA_t_ft3Fbr';
@@ -546,7 +567,14 @@ const DEFAULT_MODULES=[
     {id:'work',icon:'📋',label:'工作',locked:true},
     {id:'settings',icon:'⚙️',label:'设置',locked:true}
 ];
-let activeModules=JSON.parse(localStorage.getItem('wb_work_modules')||'["work","settings"]');
+let activeModules;
+try{
+    activeModules=JSON.parse(localStorage.getItem('wb_work_modules')||'["work","settings"]');
+    if(!Array.isArray(activeModules))activeModules=['work','settings'];
+}catch(e){
+    activeModules=['work','settings'];
+    console.warn('activeModules 解析失败，使用默认值',e);
+}
 
 // ============ 数据完整性校验 ============
 function validateData(data){
@@ -1004,7 +1032,8 @@ function switchTab(tab){
         var navItems=document.querySelectorAll('.nav-item');
         if(navItems[idx])navItems[idx].classList.add('active');
     }
-    $$('headerTitle').textContent=({'work':'📋 工作台','settings':'⚙️ 设置'})[tab]||'📋 工作台';
+    var headerTitle=$$('headerTitle');
+    if(headerTitle)headerTitle.textContent=({'work':'📋 工作台','settings':'⚙️ 设置'})[tab]||'📋 工作台';
     document.querySelectorAll('.sidebar-item').forEach(function(si){si.classList.remove('active')});
     var si=document.querySelector('.sidebar-item[data-tab="'+tab+'"]');
     if(si)si.classList.add('active');
@@ -1261,16 +1290,20 @@ function renderMemos(){
 }
 
 const d=new Date();const days=['周日','周一','周二','周三','周四','周五','周六'];
-$$('storePlanDate').value=T();$$('ipPlanDate').value=T();
+// 安全设置日期，元素不存在时跳过
+var _spd=$$('storePlanDate');if(_spd)_spd.value=T();
+var _ipd=$$('ipPlanDate');if(_ipd)_ipd.value=T();
 
 // ============ 侧边栏 ============
 function renderSidebar(){
     var nav=$$('sidebarNav');
+    if(!nav)return;
     var html='';
     activeModules.forEach(function(modId){
         var mod=DEFAULT_MODULES.find(function(m){return m.id===modId});
         if(!mod)return;
-        var isActive=document.querySelector('.panel.active') && document.querySelector('.panel.active').id==='panel-'+modId;
+        var activePanel=document.querySelector('.panel.active');
+        var isActive=activePanel && activePanel.id==='panel-'+modId;
         html+='<div class="sidebar-item'+(isActive?' active':'')+'" data-tab="'+modId+'" onclick="switchTab(\''+modId+'\');closeSidebar()">';
         html+='<span class="s-icon">'+mod.icon+'</span>';
         html+='<span class="s-label">'+mod.label+'</span>';
@@ -1288,11 +1321,13 @@ function renderSidebar(){
 
 function renderBottomNav(){
     var nav=document.querySelector('.bottom-nav');
+    if(!nav)return;
     var html='';
     activeModules.forEach(function(modId){
         var mod=DEFAULT_MODULES.find(function(m){return m.id===modId});
         if(!mod)return;
-        var isActive=document.querySelector('.panel.active') && document.querySelector('.panel.active').id==='panel-'+modId;
+        var activePanel=document.querySelector('.panel.active');
+        var isActive=activePanel && activePanel.id==='panel-'+modId;
         html+='<button class="nav-item'+(isActive?' active':'')+'" onclick="switchTab(\''+modId+'\')"><span class="icon">'+mod.icon+'</span>'+mod.label+'</button>';
     });
     nav.innerHTML=html;
@@ -1300,6 +1335,7 @@ function renderBottomNav(){
 
 function renderAddModuleMenu(){
     var menu=$$('addModuleMenu');
+    if(!menu)return;
     var available=DEFAULT_MODULES.filter(function(m){
         return !m.locked && activeModules.indexOf(m.id)<0;
     });
@@ -1311,7 +1347,7 @@ function renderAddModuleMenu(){
 
 function toggleAddModuleMenu(){
     var menu=$$('addModuleMenu');
-    menu.classList.toggle('show');
+    if(menu)menu.classList.toggle('show');
 }
 
 function addModule(modId){
@@ -1322,7 +1358,8 @@ function addModule(modId){
         renderBottomNav();
         toast('✅ 已添加模块');
     }
-    $$('addModuleMenu').classList.remove('show');
+    var menu=$$('addModuleMenu');
+    if(menu)menu.classList.remove('show');
 }
 
 function removeModule(modId){
@@ -1340,19 +1377,20 @@ function removeModule(modId){
 }
 
 function openSidebar(){
-    $$('sidebar').classList.add('open');
-    $$('sidebarOverlay').classList.add('show');
+    var sb=$$('sidebar');if(sb)sb.classList.add('open');
+    var so=$$('sidebarOverlay');if(so)so.classList.add('show');
 }
 
 function closeSidebar(){
-    $$('sidebar').classList.remove('open');
-    $$('sidebarOverlay').classList.remove('show');
+    var sb=$$('sidebar');if(sb)sb.classList.remove('open');
+    var so=$$('sidebarOverlay');if(so)so.classList.remove('show');
 }
 
 function toggleSidebarCollapse(){
     var sidebar=$$('sidebar');
     var btn=$$('collapseBtn');
     var main=$$('mainArea');
+    if(!sidebar||!btn||!main)return;
     sidebar.classList.toggle('collapsed');
     btn.classList.toggle('collapsed');
     main.classList.toggle('sidebar-collapsed');
@@ -1361,6 +1399,7 @@ function toggleSidebarCollapse(){
 
 function renderDateGroups(containerId,items,renderItemFn,emptyText){
     var container=$$(containerId);
+    if(!container)return;
     if(!items||!items.length){
         container.innerHTML='<div class="empty">'+emptyText+'</div>';
         return;
@@ -1593,6 +1632,7 @@ function onClientSearch(){
     const q=$$('clientSearch').value.trim();
     const clients=getClients();
     const container=$$('clientSuggest');
+    if(!container)return;
     if(!q){container.style.display='none';return}
     const qLower=q.toLowerCase();
     const qUpper=q.toUpperCase();
@@ -1689,7 +1729,7 @@ function onBodyTagClick(el){
 }
 function loadActionsForSelectedParts(){
     const bp=selTags('bodyTags');
-    if(!bp.length){$$('actionList').innerHTML='<div class="empty">请先选择训练部位，动作会自动加载</div>';currentActions=[];return}
+    if(!bp.length){var al=$$('actionList');if(al)al.innerHTML='<div class="empty">请先选择训练部位，动作会自动加载</div>';currentActions=[];return}
     const collectLib=(lib)=>{
         const seen=new Set(),names=[];
         bp.forEach(function(part){if(lib[part]){lib[part].forEach(function(n){if(!seen.has(n)){seen.add(n);names.push(n)}})}});
@@ -1722,6 +1762,7 @@ function loadActionsForSelectedParts(){
 }
 function renderMoodTags(){
     var container=$$('moodTags');
+    if(!container)return;
     var tags=(MOOD_LIB['通用']||[]).slice();
     var prev=selTags('moodTags');
     prev.forEach(function(label){
@@ -1739,6 +1780,7 @@ function renderMoodTags(){
 }
 function renderIssueTags(){
     var container=$$('issueTags');
+    if(!container)return;
     var bp=selTags('bodyTags');
     var seen=new Set();
     var tags=[];
@@ -1767,6 +1809,7 @@ function reloadDefaultActions(){loadActionsForSelectedParts();renderActions();re
 function addCustomAction(type){currentActions.push({name:'',sets:'',reps:'',weight:'',done:false,type:type||'main'});renderActions();autoSaveDraft();setTimeout(()=>{const inputs=$$('actionList').querySelectorAll('.act-input-name');if(inputs.length)inputs[inputs.length-1].focus()},100)}
 function renderActions(){
     const list=$$('actionList');
+    if(!list)return;
     if(!currentActions.length){list.innerHTML='<div class="empty">请先选择训练部位，动作会自动加载</div>';return}
     const rowHtml=a=>{const i=currentActions.indexOf(a);return `<div class="action-row ${a.done?'':'unchecked'}"><div class="act-check ${a.done?'checked':''}" onclick="toggleActionDone(${i})">${a.done?'✓':''}</div><input class="act-input-name" value="${a.name||''}" placeholder="动作名称" onchange="updateAction(${i},'name',this.value);autoSaveDraft()"><input class="act-input-num" type="number" value="${a.sets||''}" min="1" max="20" onchange="updateAction(${i},'sets',this.value);autoSaveDraft()" placeholder="组"><span class="act-unit">组×</span><input class="act-input-num" type="number" value="${a.reps||''}" min="1" max="50" onchange="updateAction(${i},'reps',this.value);autoSaveDraft()" placeholder="次"><span class="act-unit">次</span><input class="act-input-num" value="${a.weight||''}" onchange="updateAction(${i},'weight',this.value);autoSaveDraft()" placeholder="kg" style="width:50px"><button class="act-del" onclick="removeAction(${i})">×</button></div>`};
     const warmups=currentActions.filter(a=>(a.type||'main')==='warmup');
@@ -1783,7 +1826,7 @@ function renderActions(){
 }
 function toggleActionDone(i){if(currentActions[i]){currentActions[i].done=!currentActions[i].done;renderActions();autoSaveDraft()}}
 function updateAction(i,field,val){if(currentActions[i])currentActions[i][field]=val;autoSaveDraft()}
-function removeAction(i){currentActions.splice(i,1);if(!currentActions.length)$$('actionList').innerHTML='<div class="empty">请先选择训练部位</div>';else renderActions();autoSaveDraft()}
+function removeAction(i){currentActions.splice(i,1);if(!currentActions.length){var al=$$('actionList');if(al)al.innerHTML='<div class="empty">请先选择训练部位</div>';}else renderActions();autoSaveDraft()}
 
 // ============ 润色 ============
 function polishMood(mood,issues){
@@ -1904,7 +1947,7 @@ function genSummary(){
     $$('currentClientCount').textContent=cnt?'共 '+cnt.count+' 节':'';
     toast('✅ 总结已保存到 '+currentClient+' 的历史记录！');
 }
-function copyText(id){navigator.clipboard.writeText($$(id).textContent).then(()=>toast('✅ 已复制'))}
+function copyText(id){var el=$$(id);if(el)navigator.clipboard.writeText(el.textContent).then(()=>toast('✅ 已复制'))}
 
 // ============ 工作面板刷新（按日期折叠） ============
 function refreshWork(){
@@ -1918,21 +1961,32 @@ function refreshWork(){
 let currentDetailClient='',currentFilter='all';
 function openClientDetail(name){
     try{
-    currentDetailClient=name;$$('workMainView').style.display='none';$$('workDetailView').style.display='block';
-    $$('detailClientName').textContent=name;currentFilter='all';
+    currentDetailClient=name;
+    var wmv=$$('workMainView');if(wmv)wmv.style.display='none';
+    var wdv=$$('workDetailView');if(wdv)wdv.style.display='block';
+    var dcn=$$('detailClientName');if(dcn)dcn.textContent=name;
+    currentFilter='all';
     document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('sel'));
     const fb=document.querySelector('.filter-btn');if(fb)fb.classList.add('sel');
     renderClientDetail();
     }catch(e){showError('openClientDetail',e)}
 }
-function backToMain(){$$('workDetailView').style.display='none';$$('workMainView').style.display='block';currentDetailClient='';refreshWork()}
+function backToMain(){
+    var wdv=$$('workDetailView');
+    var wmv=$$('workMainView');
+    if(wdv)wdv.style.display='none';
+    if(wmv)wmv.style.display='block';
+    currentDetailClient='';
+    refreshWork();
+}
 function renderClientDetail(){
     const all=D.summaries.filter(s=>s.client===currentDetailClient);
     const now=new Date();const ms=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
     const monthSums=all.filter(s=>s.date.startsWith(ms));
     const bpCount={};all.forEach(s=>s.bp.forEach(b=>bpCount[b]=(bpCount[b]||0)+1));
     const topBP=Object.entries(bpCount).sort((a,b)=>b[1]-a[1]).slice(0,2).map(e=>e[0]).join('、')||'-';
-    $$('detailStats').innerHTML='<div class="stat-item"><div class="stat-num">'+all.length+'</div><div class="stat-label">总课程数</div></div><div class="stat-item"><div class="stat-num">'+monthSums.length+'</div><div class="stat-label">本月课程</div></div><div class="stat-item"><div class="stat-num">'+topBP+'</div><div class="stat-label">主要训练部位</div></div>';
+    var ds=$$('detailStats');
+    if(ds)ds.innerHTML='<div class="stat-item"><div class="stat-num">'+all.length+'</div><div class="stat-label">总课程数</div></div><div class="stat-item"><div class="stat-num">'+monthSums.length+'</div><div class="stat-label">本月课程</div></div><div class="stat-item"><div class="stat-num">'+topBP+'</div><div class="stat-label">主要训练部位</div></div>';
     filterClientSummaries(currentFilter);
 }
 function filterClientSummaries(filter,btn){
@@ -1941,16 +1995,19 @@ function filterClientSummaries(filter,btn){
     const all=D.summaries.filter(s=>s.client===currentDetailClient);
     const now=new Date();const ms=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
     let filtered=all;
-    if(filter==='month'){filtered=all.filter(s=>s.date.startsWith(ms));$$('detailFilterLabel').textContent='· 本月'}
-    else if(filter==='quarter'){const qm=Math.floor(now.getMonth()/3)*3;const qs=now.getFullYear()+'-'+String(qm+1).padStart(2,'0');filtered=all.filter(s=>s.date>=qs+'-01');$$('detailFilterLabel').textContent='· 本季度'}
-    else{$$('detailFilterLabel').textContent=''}
+    var dfl=$$('detailFilterLabel');
+    if(filter==='month'){filtered=all.filter(s=>s.date.startsWith(ms));if(dfl)dfl.textContent='· 本月'}
+    else if(filter==='quarter'){const qm=Math.floor(now.getMonth()/3)*3;const qs=now.getFullYear()+'-'+String(qm+1).padStart(2,'0');filtered=all.filter(s=>s.date>=qs+'-01');if(dfl)dfl.textContent='· 本季度'}
+    else{if(dfl)dfl.textContent=''}
     const container=$$('clientSummaryList');
+    if(!container)return;
     if(!filtered.length){container.innerHTML='<div class="empty">该时间段没有训练记录</div>';return}
     renderDateGroupsDirect(container,[...filtered].reverse(),function(s){
         return '<div class="summary-card"><div class="sc-date">📅 '+s.date+' · '+s.bp.join('、')+' · '+s.actions.length+'个动作</div><div class="sc-body">'+s.summary+'</div><div class="sc-actions"><button class="btn btn-xs btn-green" onclick="copySummaryById(\''+s.id+'\')">复制</button><button class="btn btn-xs btn-red" onclick="deleteSummary(\''+s.id+'\')">删除</button></div></div>';
     });
 }
 function renderDateGroupsDirect(container,items,renderFn){
+    if(!container)return;
     if(!items||!items.length){container.innerHTML='<div class="empty">暂无记录</div>';return}
     var groups={};
     items.forEach(function(item){
