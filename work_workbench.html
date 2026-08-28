@@ -510,9 +510,10 @@ textarea{resize:vertical;min-height:55px}
     <button class="nav-item active" onclick="switchTab('work')"><span class="icon">📋</span>工作</button>
     <button class="nav-item" onclick="switchTab('settings')"><span class="icon">⚙️</span>设置</button>
 </nav>
+<div id="footerVersion" style="text-align:center;font-size:10px;color:#ccc;padding:4px 0 8px">v<span id="footerVerText"></span></div>
 
 <script>
-const APP_VERSION='20260728v3';
+const APP_VERSION='20260828v1';
 const SUPABASE_URL='https://ffojcuwxoilihfkwskmr.supabase.co';
 const SUPABASE_KEY='sb_publishable_oflYYZKMqKlITynUYXFCkA_t_ft3Fbr';
 const SUPABASE_HEADERS={'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY,'Content-Type':'application/json'};
@@ -2475,23 +2476,33 @@ function importData(){
     // 内联注册 Service Worker（通过 Blob）
     if('serviceWorker' in navigator){
         var swCode=`
-var CACHE_NAME='workbench_work_v1';
-var URLS_TO_CACHE=[self.location.href];
+var CACHE_NAME='workbench_work_v2';
 self.addEventListener('install',function(e){
-    e.waitUntil(caches.open(CACHE_NAME).then(function(cache){return cache.addAll(URLS_TO_CACHE)}).then(function(){return self.skipWaiting()}));
+    e.waitUntil(caches.open(CACHE_NAME).then(function(){return self.skipWaiting()}));
 });
 self.addEventListener('activate',function(e){
     e.waitUntil(caches.keys().then(function(keys){return Promise.all(keys.filter(function(k){return k!==CACHE_NAME}).map(function(k){return caches.delete(k)}))}).then(function(){return self.clients.claim()}));
 });
 self.addEventListener('fetch',function(e){
-    e.respondWith(caches.match(e.request).then(function(response){
+    var req=e.request;
+    if(req.mode==='navigate'||(req.method==='GET'&&req.destination==='document')){
+        e.respondWith(fetch(req).then(function(resp){
+            var respClone=resp.clone();
+            caches.open(CACHE_NAME).then(function(cache){cache.put(req,respClone)});
+            return resp;
+        }).catch(function(){
+            return caches.match(req).then(function(cached){return cached||new Response('离线模式，请连接网络后刷新')});
+        }));
+        return;
+    }
+    e.respondWith(caches.match(req).then(function(response){
         if(response){return response}
-        return fetch(e.request).then(function(resp){
+        return fetch(req).then(function(resp){
             if(!resp||resp.status!==200){return resp}
             var respClone=resp.clone();
-            caches.open(CACHE_NAME).then(function(cache){cache.put(e.request,respClone)});
+            caches.open(CACHE_NAME).then(function(cache){cache.put(req,respClone)});
             return resp;
-        }).catch(function(){return caches.match(e.request)});
+        }).catch(function(){return caches.match(req)});
     }));
 });
 self.addEventListener('message',function(e){
@@ -2501,16 +2512,20 @@ self.addEventListener('message',function(e){
         var swBlob=new Blob([swCode],{type:'application/javascript'});
         var swUrl=URL.createObjectURL(swBlob);
         navigator.serviceWorker.register(swUrl,{scope:'/'}).then(function(reg){
-            console.log('SW registered (inline)');
+            console.log('SW registered (inline) v'+APP_VERSION);
             reg.addEventListener('updatefound',function(){
                 var nw=reg.installing;
                 nw.addEventListener('statechange',function(){
                     if(nw.state==='installed'&&navigator.serviceWorker.controller){
-                        $$('updateBanner').classList.add('show');
+                        nw.postMessage('skipWaiting');
                     }
                 });
             });
         }).catch(function(e){console.log('SW registration skipped:',e.message)});
+        navigator.serviceWorker.addEventListener('controllerchange',function(){
+            console.log('SW controller changed, reloading...');
+            window.location.reload();
+        });
     }
 })();
 
@@ -2570,6 +2585,7 @@ function initApp(){
     renderSidebar();
     refreshAll();
     $$('versionDisplay').textContent=APP_VERSION;
+    var fv=$$('footerVerText');if(fv)fv.textContent=APP_VERSION;
     // 渲染同步日志
     var logEl=$$('syncLogContainer');if(logEl)logEl.innerHTML=getSyncLogHtml();
     // 设置页时刷新日志
