@@ -613,6 +613,90 @@ let __lastSyncTime=0;
 let __syncInProgress=false;
 let __pendingOps=JSON.parse(localStorage.getItem(PENDING_QUEUE_KEY)||'[]');
 
+// ============ 数据迁移：从旧工作台迁移工作数据 ============
+function migrateFromOldWorkbench(){
+    var migrated=localStorage.getItem('wb_work_migrated');
+    if(migrated==='1')return;
+    var needMigrate=false;
+    if(!D.summaries||D.summaries.length===0)needMigrate=true;
+    if(!needMigrate){localStorage.setItem('wb_work_migrated','1');return}
+    console.log('[迁移] 检测到工作台数据为空，开始从旧数据迁移...');
+    var sources=[
+        {key:'wb_v7',label:'旧主数据'},
+        {key:'wb_backup',label:'旧备份数据'}
+    ];
+    var migratedSummaries=[];
+    var migratedChecks={};
+    for(var i=0;i<sources.length;i++){
+        try{
+            var raw=localStorage.getItem(sources[i].key);
+            if(!raw)continue;
+            var oldData=JSON.parse(raw);
+            if(oldData.summaries&&oldData.summaries.length){
+                console.log('[迁移] 从'+sources[i].label+'发现 '+oldData.summaries.length+' 条训练总结');
+                oldData.summaries.forEach(function(s){
+                    if(s&&s.id&&s.client&&!migratedSummaries.find(x=>x.id===s.id)){
+                        migratedSummaries.push(s);
+                    }
+                });
+            }
+            if(oldData.checks){
+                Object.keys(oldData.checks).forEach(function(d){
+                    if(!migratedChecks[d])migratedChecks[d]=oldData.checks[d];
+                    else migratedChecks[d]=Object.assign({},oldData.checks[d],migratedChecks[d]);
+                });
+            }
+        }catch(e){console.warn('[迁移] 读取'+sources[i].label+'失败:',e)}
+    }
+    if(migratedSummaries.length>0||Object.keys(migratedChecks).length>0){
+        D.summaries=migratedSummaries;
+        D.checks=migratedChecks;
+        validateData(D);
+        D=migrateData(D);
+        localStorage.setItem(KEY,JSON.stringify(D));
+        localStorage.setItem(BACKUP_KEY,JSON.stringify(D));
+        console.log('[迁移] 成功迁移 '+D.summaries.length+' 条训练总结和 '+Object.keys(D.checks).length+' 天的打卡数据');
+        toast('✅ 已从旧数据恢复 '+D.summaries.length+' 条训练记录');
+    }
+    localStorage.setItem('wb_work_migrated','1');
+}
+function migrateFromOldCloud(){
+    if(!navigator.onLine)return;
+    var migrated=localStorage.getItem('wb_work_cloud_migrated');
+    if(migrated==='1')return;
+    fetch(SUPABASE_URL+'/rest/v1/user_data?user_id=eq.default&select=data,updated_at',{
+        method:'GET',headers:SUPABASE_HEADERS
+    }).then(function(r){return r.json()}).then(function(rows){
+        if(!rows||!rows.length||!rows[0].data){
+            console.log('[云迁移] 旧云端无数据');
+            localStorage.setItem('wb_work_cloud_migrated','1');
+            return;
+        }
+        var sd=rows[0].data;
+        if(!sd.summaries||!sd.summaries.length){
+            console.log('[云迁移] 旧云端无训练总结数据');
+            localStorage.setItem('wb_work_cloud_migrated','1');
+            return;
+        }
+        var beforeCount=D.summaries.length;
+        D.summaries=mergeById(D.summaries,sd.summaries);
+        if(sd.checks)D.checks=mergeChecks(D.checks,sd.checks);
+        localStorage.setItem(KEY,JSON.stringify(D));
+        localStorage.setItem(BACKUP_KEY,JSON.stringify(D));
+        var newCount=D.summaries.length;
+        if(newCount>beforeCount){
+            console.log('[云迁移] 从旧云端恢复 '+(newCount-beforeCount)+' 条新记录');
+            toast('🔄 从云端恢复 '+(newCount-beforeCount)+' 条训练记录');
+            refreshAll();
+        }
+        _uploadData();
+        localStorage.setItem('wb_work_cloud_migrated','1');
+    }).catch(function(e){
+        console.warn('[云迁移] 失败，稍后重试:',e);
+    });
+}
+try{migrateFromOldWorkbench()}catch(e){console.error('数据迁移异常:',e)}
+
 // ============ 自动保存草稿 ============
 let __draftTimer=null;
 function autoSaveDraft(){
@@ -625,18 +709,13 @@ function autoSaveDraft(){
                 draft[el.id]=el.value;
             }
         });
-        ['sWeight','storePlanDate','ipPlanDate'].forEach(function(id){
-            var el=document.getElementById(id);
-            if(el)draft[id]=el.value;
-        });
-        ['storeIdeaType','storePlat','storeType','storeStatus','ipIdeaType','ipPlat','ipType','ipStatus','somaLevel'].forEach(function(id){
+        ['sWeight'].forEach(function(id){
             var el=document.getElementById(id);
             if(el)draft[id]=el.value;
         });
         draft._bodyTags=selTags('bodyTags');
         draft._moodTags=selTags('moodTags');
         draft._issueTags=selTags('issueTags');
-        draft._trigTags=selTags('trigTags');
         draft._currentClient=currentClient;
         draft._currentActions=currentActions;
         draft._currentMood=currentMood;
@@ -675,11 +754,6 @@ function restoreDraft(){
                     if(draft._issueTags.indexOf(t.textContent)>=0)t.classList.add('sel');
                 });
             },100);
-        }
-        if(draft._trigTags && draft._trigTags.length){
-            document.querySelectorAll('#trigTags .tag').forEach(function(t){
-                if(draft._trigTags.indexOf(t.textContent)>=0)t.classList.add('sel');
-            });
         }
         if(draft._currentClient){
             currentClient=draft._currentClient;
@@ -897,7 +971,7 @@ function syncFromServer(){return smartSync()}
 const T=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
 const toast=m=>{const t=document.createElement('div');t.className='toast';t.textContent=m;document.body.appendChild(t);setTimeout(()=>t.remove(),2100)}
 const $$=id=>document.getElementById(id)
-const selTags=id=>Array.from($$(id).querySelectorAll('.tag.sel')).map(e=>e.textContent)
+const selTags=id=>{var el=$$(id);return el?Array.from(el.querySelectorAll('.tag.sel')).map(e=>e.textContent):[]}
 const TAB_ORDER=['work','settings'];
 function switchTab(tab){
     document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
@@ -1222,7 +1296,7 @@ function toggleAddModuleMenu(){
 function addModule(modId){
     if(activeModules.indexOf(modId)<0){
         activeModules.push(modId);
-        localStorage.setItem('wb_modules',JSON.stringify(activeModules));
+        localStorage.setItem('wb_work_modules',JSON.stringify(activeModules));
         renderSidebar();
         renderBottomNav();
         toast('✅ 已添加模块');
@@ -1235,7 +1309,7 @@ function removeModule(modId){
     if(mod&&mod.locked)return toast('🔒 此模块不可删除');
     if(!confirm('确定移除「'+(mod?mod.label:modId)+'」模块吗？'))return;
     activeModules=activeModules.filter(function(id){return id!==modId});
-    localStorage.setItem('wb_modules',JSON.stringify(activeModules));
+    localStorage.setItem('wb_work_modules',JSON.stringify(activeModules));
     renderSidebar();
     renderBottomNav();
     if(document.querySelector('.panel.active') && document.querySelector('.panel.active').id==='panel-'+modId){
@@ -2498,6 +2572,8 @@ function initApp(){
 
     // 首次同步
     if(navigator.onLine){
+        // 先尝试从旧云端迁移数据
+        migrateFromOldCloud();
         syncFromServer().then(function(changed){
             if(changed){refreshAll();toast('🔄 已同步最新数据')}
         });
