@@ -651,8 +651,11 @@ function migrateFromOldWorkbench(){
     if(migratedSummaries.length>0||Object.keys(migratedChecks).length>0){
         D.summaries=migratedSummaries;
         D.checks=migratedChecks;
+        D.summaries.forEach(function(item,idx){
+            if(!item.id)item.id='mig_'+Date.now()+'_'+idx;
+            if(!item.date)item.date=new Date().toISOString().split('T')[0];
+        });
         validateData(D);
-        D=migrateData(D);
         localStorage.setItem(KEY,JSON.stringify(D));
         localStorage.setItem(BACKUP_KEY,JSON.stringify(D));
         console.log('[迁移] 成功迁移 '+D.summaries.length+' 条训练总结和 '+Object.keys(D.checks).length+' 天的打卡数据');
@@ -1589,11 +1592,11 @@ function onClientSearch(){
             const py=getPinyinInitials(c.name);
             const showPy=py.toUpperCase().indexOf(qUpper)>=0;
             const nameHtml=showPy?'<span style="color:var(--text)">'+c.name+'</span> <span style="color:var(--sub);font-size:11px">'+py.toUpperCase()+'</span>':c.name;
-            return '<div style="padding:10px 14px;cursor:pointer;border-bottom:1px solid #f5f5f5;display:flex;justify-content:space-between;align-items:center;font-size:14px" onmousedown="event.preventDefault();selectClient(\''+c.name.replace(/'/g,"\\'")+'\')">'+nameHtml+'<span class="chip-count">'+c.count+'节</span></div>';
+            return '<div style="padding:10px 14px;cursor:pointer;border-bottom:1px solid #f5f5f5;display:flex;justify-content:space-between;align-items:center;font-size:14px" onmousedown="event.preventDefault();selectAndOpenDetail(\''+c.name.replace(/'/g,"\\'")+'\')" ontouchend="event.preventDefault();selectAndOpenDetail(\''+c.name.replace(/'/g,"\\'")+'\')">'+nameHtml+'<span class="chip-count">'+c.count+'节</span></div>';
         }).join('');
     }
     if(!matched.some(c=>c.name===q)){
-        html+='<div style="padding:10px 14px;cursor:pointer;background:#fafafa;color:#1a1a1a;font-weight:600;font-size:13px;border-bottom:1px solid #f5f5f5;text-align:center" onmousedown="event.preventDefault();selectClient(\''+q.replace(/'/g,"\\'")+'\')">+ 新建客户：<span style="color:#4CAF50">'+q+'</span></div>';
+        html+='<div style="padding:10px 14px;cursor:pointer;background:#fafafa;color:#1a1a1a;font-weight:600;font-size:13px;border-bottom:1px solid #f5f5f5;text-align:center" onmousedown="event.preventDefault();selectClient(\''+q.replace(/'/g,"\\'")+'\')" ontouchend="event.preventDefault();selectClient(\''+q.replace(/'/g,"\\'")+'\')">+ 新建客户：<span style="color:#4CAF50">'+q+'</span></div>';
     }
     if(html){container.innerHTML=html;container.style.display='block'}else{container.style.display='none'}
 }
@@ -1601,7 +1604,12 @@ document.addEventListener('click',e=>{if(!e.target.closest('#clientSearch')&&!e.
 function confirmClient(){
     const name=$$('clientSearch').value.trim();
     if(!name)return toast('请输入客户姓名');
-    selectClient(name);
+    var existing=getClients().find(c=>c.name===name);
+    if(existing){
+        selectAndOpenDetail(name);
+    }else{
+        selectClient(name);
+    }
 }
 function selectClient(name){
     currentClient=name;
@@ -1620,7 +1628,15 @@ function selectClient(name){
     $$('sNote').value='';
     currentActions=[];
     $$('actionList').innerHTML='<div class="empty">请先选择训练部位，动作会自动加载</div>';
+    var formCard=$$('summaryCard');
+    if(formCard)formCard.scrollIntoView({behavior:'smooth',block:'start'});
     autoSaveDraft();
+}
+function selectAndOpenDetail(name){
+    if(window.__lastSelectTime&&Date.now()-window.__lastSelectTime<500)return;
+    window.__lastSelectTime=Date.now();
+    selectClient(name);
+    setTimeout(function(){openClientDetail(name)},100);
 }
 function changeClient(){
     currentClient='';
