@@ -1010,7 +1010,7 @@ function switchTab(tab){
     if(si)si.classList.add('active');
     if(tab==='work')refreshWork();
 }
-function refreshAll(){refreshWork();renderSidebar();renderBottomNav()}
+function refreshAll(){try{refreshWork();renderSidebar();renderBottomNav()}catch(e){showError('refreshAll',e)}}
 
 // ============ 自媒体板块（合并门店IP+个人IP+脚本工坊） ============
 function switchMediaTab(tab){
@@ -1600,7 +1600,6 @@ function onClientSearch(){
         if(c.name.toLowerCase().includes(qLower))return true;
         const py=getPinyinInitials(c.name);
         if(py.toUpperCase().indexOf(qUpper)>=0)return true;
-        // 也支持每个字的拼音首字母逐一对比，实现首字母连续匹配
         if(py.toUpperCase().startsWith(qUpper))return true;
         return false;
     });
@@ -1610,11 +1609,11 @@ function onClientSearch(){
             const py=getPinyinInitials(c.name);
             const showPy=py.toUpperCase().indexOf(qUpper)>=0;
             const nameHtml=showPy?'<span style="color:var(--text)">'+c.name+'</span> <span style="color:var(--sub);font-size:11px">'+py.toUpperCase()+'</span>':c.name;
-            return '<div style="padding:10px 14px;cursor:pointer;border-bottom:1px solid #f5f5f5;display:flex;justify-content:space-between;align-items:center;font-size:14px" onmousedown="event.preventDefault();selectAndOpenDetail(\''+c.name.replace(/'/g,"\\'")+'\')" ontouchend="event.preventDefault();selectAndOpenDetail(\''+c.name.replace(/'/g,"\\'")+'\')">'+nameHtml+'<span class="chip-count">'+c.count+'节</span></div>';
+            return '<div data-client="'+c.name.replace(/"/g,'&quot;')+'" style="padding:12px 14px;cursor:pointer;border-bottom:1px solid #f5f5f5;display:flex;justify-content:space-between;align-items:center;font-size:14px" onclick="selectAndOpenDetail(this.getAttribute(\'data-client\'))">'+nameHtml+'<span class="chip-count">'+c.count+'节</span></div>';
         }).join('');
     }
     if(!matched.some(c=>c.name===q)){
-        html+='<div style="padding:10px 14px;cursor:pointer;background:#fafafa;color:#1a1a1a;font-weight:600;font-size:13px;border-bottom:1px solid #f5f5f5;text-align:center" onmousedown="event.preventDefault();selectClient(\''+q.replace(/'/g,"\\'")+'\')" ontouchend="event.preventDefault();selectClient(\''+q.replace(/'/g,"\\'")+'\')">+ 新建客户：<span style="color:#4CAF50">'+q+'</span></div>';
+        html+='<div data-client="'+q.replace(/"/g,'&quot;')+'" style="padding:12px 14px;cursor:pointer;background:#fafafa;color:#1a1a1a;font-weight:600;font-size:13px;border-bottom:1px solid #f5f5f5;text-align:center" onclick="selectClient(this.getAttribute(\'data-client\'))">+ 新建客户：<span style="color:#4CAF50">'+q+'</span></div>';
     }
     if(html){container.innerHTML=html;container.style.display='block'}else{container.style.display='none'}
 }
@@ -1630,6 +1629,7 @@ function confirmClient(){
     }
 }
 function selectClient(name){
+    try{
     currentClient=name;
     $$('clientSearch').value=name;
     $$('clientSuggest').style.display='none';
@@ -1649,12 +1649,21 @@ function selectClient(name){
     var formCard=$$('summaryCard');
     if(formCard)formCard.scrollIntoView({behavior:'smooth',block:'start'});
     autoSaveDraft();
+    }catch(e){showError('selectClient',e)}
 }
 function selectAndOpenDetail(name){
-    if(window.__lastSelectTime&&Date.now()-window.__lastSelectTime<500)return;
-    window.__lastSelectTime=Date.now();
+    try{
     selectClient(name);
     setTimeout(function(){openClientDetail(name)},100);
+    }catch(e){showError('selectAndOpenDetail',e)}
+}
+function showError(fn,e){
+    console.error('['+fn+']',e);
+    var d=document.createElement('div');
+    d.style.cssText='position:fixed;top:0;left:0;right:0;background:#ff4444;color:#fff;padding:12px;font-size:13px;z-index:99999;text-align:center';
+    d.textContent='['+fn+'] '+e.message;
+    document.body.appendChild(d);
+    setTimeout(function(){d.remove()},5000);
 }
 function changeClient(){
     currentClient='';
@@ -1908,11 +1917,13 @@ function refreshWork(){
 // ============ 客户详情页 ============
 let currentDetailClient='',currentFilter='all';
 function openClientDetail(name){
+    try{
     currentDetailClient=name;$$('workMainView').style.display='none';$$('workDetailView').style.display='block';
     $$('detailClientName').textContent=name;currentFilter='all';
     document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('sel'));
     const fb=document.querySelector('.filter-btn');if(fb)fb.classList.add('sel');
     renderClientDetail();
+    }catch(e){showError('openClientDetail',e)}
 }
 function backToMain(){$$('workDetailView').style.display='none';$$('workMainView').style.display='block';currentDetailClient='';refreshWork()}
 function renderClientDetail(){
@@ -2570,7 +2581,19 @@ document.addEventListener('visibilitychange',function(){
 });
 
 // ============ 初始化 ============
+window.onerror=function(msg,url,line,col,err){
+    showError('window.onerror',err||new Error(msg));
+    return false;
+};
 function initApp(){
+    // 版本号优先显示，确保即使后续代码出错也能看到版本
+    try{
+        var vd=document.getElementById('versionDisplay');
+        if(vd)vd.textContent=APP_VERSION;
+        var fv=document.getElementById('footerVerText');
+        if(fv)fv.textContent=APP_VERSION;
+    }catch(e){}
+    try{
     // 桌面端适配
     if(window.innerWidth>=768){
         $$('collapseBtn').style.display='flex';
@@ -2601,8 +2624,7 @@ function initApp(){
 
     renderSidebar();
     refreshAll();
-    $$('versionDisplay').textContent=APP_VERSION;
-    var fv=$$('footerVerText');if(fv)fv.textContent=APP_VERSION;
+    // 版本号已在initApp开头优先设置
     // 渲染同步日志
     var logEl=$$('syncLogContainer');if(logEl)logEl.innerHTML=getSyncLogHtml();
     // 设置页时刷新日志
@@ -2629,6 +2651,7 @@ function initApp(){
     }else{
         setSyncStatus('offline');
     }
+    }catch(e){showError('initApp',e)}
 }
 
 var _origToggleCollapse=toggleSidebarCollapse;

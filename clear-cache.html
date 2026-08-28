@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>清除缓存</title>
+<style>
+body{font-family:-apple-system,sans-serif;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;margin:0;background:#faf7f2;color:#4a4a4a}
+.box{text-align:center;padding:40px 20px}
+.icon{font-size:48px;margin-bottom:16px}
+.title{font-size:20px;font-weight:700;margin-bottom:8px}
+.msg{font-size:14px;color:#999;margin-bottom:24px}
+.bar{width:200px;height:4px;background:#eee;border-radius:2px;overflow:hidden;margin:0 auto}
+.bar-fill{width:0;height:100%;background:#7d9b76;transition:width .3s}
+</style>
+</head>
+<body>
+<div class="box">
+<div class="icon" id="ic">🔄</div>
+<div class="title" id="t">正在清除缓存...</div>
+<div class="msg" id="m">请稍候，完成后将自动跳转</div>
+<div class="bar"><div class="bar-fill" id="bf"></div></div>
+</div>
+<script>
+var step=0;
+var steps=['注销旧Service Worker','清除所有缓存','跳转到工作台'];
+function update(){
+    if(step>=steps.length){
+        var base=location.href.replace('clear-cache.html','work_workbench.html');
+        location.replace(base);
+        return;
+    }
+    document.getElementById('t').textContent='正在'+steps[step]+'...';
+    document.getElementById('bf').styleWidth=(step+1)/steps.length*100+'%';
+    document.getElementById('bf').style.width=(step+1)/steps.length*100+'%';
+    step++;
+    setTimeout(update,800);
+}
+if('serviceWorker' in navigator){
+    navigator.serviceWorker.getRegistrations().then(function(regs){
+        var promises=regs.map(function(r){return r.unregister()});
+        return Promise.all(promises);
+    }).then(function(){
+        if('caches' in window){
+            return caches.keys().then(function(keys){
+                return Promise.all(keys.map(function(k){return caches.delete(k)}));
+            });
+        }
+    }).then(function(){
+        setTimeout(update,300);
+    }).catch(function(){setTimeout(update,300)});
+}else{
+    setTimeout(update,300);
+}
+</script>
+</body>
+</html>
