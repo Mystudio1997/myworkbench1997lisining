@@ -8,6 +8,23 @@
 <meta name="apple-mobile-web-app-title" content="工作台">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#7d9b76">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<script>
+// 强制清除旧 Service Worker，解决缓存优先策略导致的版本卡死
+if('serviceWorker' in navigator){
+    navigator.serviceWorker.getRegistrations().then(function(regs){
+        regs.forEach(function(reg){
+            var swUrl=reg.active&&reg.active.scriptURL||'';
+            if(swUrl.indexOf('blob:')===0||swUrl.indexOf('workbench')>=0){
+                console.log('[CacheBust] unregistering old SW:',swUrl);
+                reg.unregister();
+            }
+        });
+    }).catch(function(){});
+}
+</script>
 <!-- manifest.json 由 JS 内联生成 -->
 <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><defs><linearGradient id='g' x1='0%25' y1='0%25' x2='100%25' y2='100%25'><stop offset='0%25' style='stop-color:%235a7d5a'/><stop offset='100%25' style='stop-color:%237d9b76'/></linearGradient></defs><rect width='100' height='100' rx='22' fill='url(%23g)'/><text x='50' y='62' text-anchor='middle' font-size='42' font-family='sans-serif'>📋</text></svg>">
 <title>工作台 · 课后总结</title>
