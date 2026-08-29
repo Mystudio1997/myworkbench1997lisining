@@ -12,20 +12,28 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <script>
-// 强制清除旧 Service Worker，解决缓存优先策略导致的版本卡死
+// 强制清除所有旧 Service Worker 和缓存，解决 PWA 模式下数据不同步问题
+// 根因：旧 Blob URL Service Worker 会拦截 Supabase API 请求并返回缓存空数据
 if('serviceWorker' in navigator){
     navigator.serviceWorker.getRegistrations().then(function(regs){
         regs.forEach(function(reg){
-            var swUrl=reg.active&&reg.active.scriptURL||'';
-            if(swUrl.indexOf('blob:')===0||swUrl.indexOf('workbench')>=0){
-                console.log('[CacheBust] unregistering old SW:',swUrl);
-                reg.unregister();
-            }
+            console.log('[CacheBust] 注销旧 Service Worker:', reg.scope);
+            reg.unregister().catch(function(){});
         });
+        // 同时清除所有 Cache Storage
+        if(typeof caches!=='undefined' && caches.keys){
+            caches.keys().then(function(keys){
+                keys.forEach(function(key){
+                    console.log('[CacheBust] 删除缓存:', key);
+                    caches.delete(key);
+                });
+            }).catch(function(){});
+        }
     }).catch(function(){});
 }
 </script>
-<!-- manifest.json 由 JS 内联生成 -->
+<!-- 静态 manifest.json 文件，避免 Blob URL 在 iOS PWA 下的不稳定性 -->
+<link rel="manifest" href="manifest_work.json">
 <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><defs><linearGradient id='g' x1='0%25' y1='0%25' x2='100%25' y2='100%25'><stop offset='0%25' style='stop-color:%235a7d5a'/><stop offset='100%25' style='stop-color:%237d9b76'/></linearGradient></defs><rect width='100' height='100' rx='22' fill='url(%23g)'/><text x='50' y='62' text-anchor='middle' font-size='42' font-family='sans-serif'>📋</text></svg>">
 <title>工作台 · 课后总结</title>
 <style>
@@ -577,18 +585,29 @@ function _showErr(fn,e){
     }catch(x){}
 }
 window.onerror=function(msg,url,line,col,err){
+    // 过滤跨域脚本错误（Script error.），这类错误不影响功能
+    if(msg==='Script error.'||msg==='<unknown>'){
+        console.warn('[跨域脚本错误，已忽略]',msg);
+        return false;
+    }
     _showErr('window.onerror',err||new Error(msg));
     return false;
 };
 window.addEventListener('unhandledrejection',function(e){
-    _showErr('unhandledPromise',e.reason||new Error('Promise rejected'));
+    // 过滤跨域和网络相关的 Promise 错误
+    var reason=e.reason;
+    if(reason&&(reason.message==='Script error.'||reason.message==='Network Error')){
+        console.warn('[Promise错误，已忽略]',reason);
+        return;
+    }
+    _showErr('unhandledPromise',reason||new Error('Promise rejected'));
 });
 // 安全的DOM访问
 function _safe(id){return document.getElementById(id)}
-const APP_VERSION='20260828v2';
+const APP_VERSION='20260829v1';
 const SUPABASE_URL='https://ffojcuwxoilihfkwskmr.supabase.co';
 const SUPABASE_KEY='sb_publishable_oflYYZKMqKlITynUYXFCkA_t_ft3Fbr';
-const SUPABASE_HEADERS={'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY,'Content-Type':'application/json'};
+const SUPABASE_HEADERS={'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY,'Content-Type':'application/json','cache-control':'no-cache'};
 const KEY='wb_work_v1';
 const DRAFT_KEY='wb_work_draft';
 const EMPTY={summaries:[],checks:{}};
@@ -748,7 +767,7 @@ function migrateFromOldCloud(){
     var migrated=localStorage.getItem('wb_work_cloud_migrated');
     if(migrated==='1')return;
     fetch(SUPABASE_URL+'/rest/v1/user_data?user_id=eq.default&select=data,updated_at',{
-        method:'GET',headers:SUPABASE_HEADERS
+        method:'GET',headers:SUPABASE_HEADERS,cache:'no-store'
     }).then(function(r){return r.json()}).then(function(rows){
         if(!rows||!rows.length||!rows[0].data){
             console.log('[云迁移] 旧云端无数据');
@@ -872,7 +891,7 @@ function _supaSave(){
     if(__syncInProgress)return;
     setSyncStatus('syncing');
     fetch(SUPABASE_URL+'/rest/v1/user_data?user_id=eq.workbench_work&select=data,updated_at',{
-        method:'GET',headers:SUPABASE_HEADERS
+        method:'GET',headers:SUPABASE_HEADERS,cache:'no-store'
     }).then(function(r){return r.json()}).then(function(rows){
         if(rows&&rows.length&&rows[0].data){
             var sd=rows[0].data;
@@ -925,7 +944,7 @@ function checkConnection(){
     if(!navigator.onLine){setSyncStatus('offline');return}
     setSyncStatus('syncing');
     fetch(SUPABASE_URL+'/rest/v1/user_data?user_id=eq.workbench_work&select=id,updated_at&limit=1',{
-        headers:SUPABASE_HEADERS
+        headers:SUPABASE_HEADERS,cache:'no-store'
     }).then(function(r){
         if(r.ok)setSyncStatus('online');
         else setSyncStatus('offline');
@@ -950,7 +969,7 @@ function mergeChecks(local,server){
 // ============ 从云端获取指定用户的数据 ============
 function _fetchCloudData(userId){
     return fetch(SUPABASE_URL+'/rest/v1/user_data?user_id=eq.'+userId+'&select=data,updated_at',{
-        headers:SUPABASE_HEADERS
+        headers:SUPABASE_HEADERS,cache:'no-store'
     }).then(function(r){
         if(!r.ok)throw new Error('HTTP '+r.status);
         return r.json();
@@ -1031,12 +1050,12 @@ function smartSync(){
 function _uploadData(){
     D._syncVersion=APP_VERSION;
     return fetch(SUPABASE_URL+'/rest/v1/user_data?user_id=eq.workbench_work',{
-        method:'PATCH',headers:SUPABASE_HEADERS,
+        method:'PATCH',headers:SUPABASE_HEADERS,cache:'no-store',
         body:JSON.stringify({data:D,updated_at:new Date().toISOString(),_app_version:APP_VERSION})
     }).then(function(r){
         if(r.status===404||r.status===406){
             return fetch(SUPABASE_URL+'/rest/v1/user_data',{
-                method:'POST',headers:Object.assign({},SUPABASE_HEADERS,{'Prefer':'return=minimal'}),
+                method:'POST',headers:Object.assign({},SUPABASE_HEADERS,{'Prefer':'return=minimal'}),cache:'no-store',
                 body:JSON.stringify({user_id:'workbench_work',data:D,updated_at:new Date().toISOString(),_app_version:APP_VERSION})
             });
         }
@@ -2627,74 +2646,33 @@ function importData(){
     }catch(e){toast('⚠️ 数据格式错误：'+e.message)}
 }
 
-// ============ 内联生成 manifest.json 和 sw.js ============
+// ============ 清理旧 Service Worker（manifest 已用静态文件）============
+// manifest_work.json 是静态文件，在 <head> 中通过 <link rel="manifest"> 引用
+// 此处仅负责清理可能残留的旧 Service Worker，不再生成 Blob URL
 (function(){
-    // 生成 manifest.json blob URL
-    var manifest={name:'工作台 · 课后总结',short_name:'工作台',start_url:location.href,display:'standalone',background_color:'#faf7f2',theme_color:'#7d9b76',icons:[{src:'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:%235a7d5a"/><stop offset="100%" style="stop-color:%237d9b76"/></linearGradient></defs><rect width="100" height="100" rx="22" fill="url(%23g)"/><text x="50" y="62" text-anchor="middle" font-size="42" font-family="sans-serif">📋</text></svg>',sizes:'192x192',type:'image/svg+xml'}]};
-    var manifestBlob=new Blob([JSON.stringify(manifest)],{type:'application/json'});
-    var manifestUrl=URL.createObjectURL(manifestBlob);
-    var link=document.createElement('link');
-    link.rel='manifest';link.href=manifestUrl;
-    document.head.appendChild(link);
-
-    // 内联注册 Service Worker（通过 Blob）
     if('serviceWorker' in navigator){
-        var swCode=`
-var CACHE_NAME='workbench_work_v2';
-self.addEventListener('install',function(e){
-    e.waitUntil(caches.open(CACHE_NAME).then(function(){return self.skipWaiting()}));
-});
-self.addEventListener('activate',function(e){
-    e.waitUntil(caches.keys().then(function(keys){return Promise.all(keys.filter(function(k){return k!==CACHE_NAME}).map(function(k){return caches.delete(k)}))}).then(function(){return self.clients.claim()}));
-});
-self.addEventListener('fetch',function(e){
-    var req=e.request;
-    if(req.mode==='navigate'||(req.method==='GET'&&req.destination==='document')){
-        e.respondWith(fetch(req).then(function(resp){
-            var respClone=resp.clone();
-            caches.open(CACHE_NAME).then(function(cache){cache.put(req,respClone)});
-            return resp;
-        }).catch(function(){
-            return caches.match(req).then(function(cached){return cached||new Response('离线模式，请连接网络后刷新')});
-        }));
-        return;
-    }
-    e.respondWith(caches.match(req).then(function(response){
-        if(response){return response}
-        return fetch(req).then(function(resp){
-            if(!resp||resp.status!==200){return resp}
-            var respClone=resp.clone();
-            caches.open(CACHE_NAME).then(function(cache){cache.put(req,respClone)});
-            return resp;
-        }).catch(function(){return caches.match(req)});
-    }));
-});
-self.addEventListener('message',function(e){
-    if(e.data==='skipWaiting'){self.skipWaiting()}
-});
-`;
-        var swBlob=new Blob([swCode],{type:'application/javascript'});
-        var swUrl=URL.createObjectURL(swBlob);
-        navigator.serviceWorker.register(swUrl,{scope:'/'}).then(function(reg){
-            console.log('SW registered (inline) v'+APP_VERSION);
-            reg.addEventListener('updatefound',function(){
-                var nw=reg.installing;
-                nw.addEventListener('statechange',function(){
-                    if(nw.state==='installed'&&navigator.serviceWorker.controller){
-                        nw.postMessage('skipWaiting');
-                    }
-                });
+        navigator.serviceWorker.getRegistrations().then(function(regs){
+            regs.forEach(function(reg){
+                reg.unregister().then(function(){
+                    console.log('[SW清理] 已注销旧 Service Worker:', reg.scope);
+                }).catch(function(){});
             });
-        }).catch(function(e){console.log('SW registration skipped:',e.message)});
-        navigator.serviceWorker.addEventListener('controllerchange',function(){
-            console.log('SW controller changed, reloading...');
-            window.location.reload();
-        });
+            // 清除所有缓存
+            if(caches && caches.keys){
+                caches.keys().then(function(keys){
+                    keys.forEach(function(key){
+                        caches.delete(key).then(function(){
+                            console.log('[缓存清理] 已删除缓存:', key);
+                        });
+                    });
+                }).catch(function(){});
+            }
+        }).catch(function(){});
     }
 })();
 
 function doUpdate(){
-    if(navigator.serviceWorker.controller){
+    if(navigator.serviceWorker && navigator.serviceWorker.controller){
         navigator.serviceWorker.controller.postMessage('skipWaiting');
     }
     window.location.reload();
@@ -2733,10 +2711,8 @@ document.addEventListener('visibilitychange',function(){
 });
 
 // ============ 初始化 ============
-window.onerror=function(msg,url,line,col,err){
-    showError('window.onerror',err||new Error(msg));
-    return false;
-};
+// 注意：window.onerror 已在文件最前面定义，此处不再重复定义
+// 避免双重错误处理导致红色横幅重复出现
 function initApp(){
     // 版本号优先显示，确保即使后续代码出错也能看到版本
     try{
@@ -2820,7 +2796,15 @@ function initApp(){
                         refreshAll();
                         toast('✅ 已从云端恢复 '+D.summaries.length+' 条训练记录');
                     }else{
-                        toast('云端暂无数据，您可以开始创建客户');
+                        // 检查是否同步失败（而非真的无数据）
+                        var syncDot=$$('syncDot');
+                        if(syncDot&&syncDot.className.indexOf('offline')>=0){
+                            toast('⚠️ 云端同步失败，请检查网络后重试');
+                            // 5秒后自动重试
+                            setTimeout(function(){smartSync().then(function(c){if(c){refreshAll();toast('✅ 重试成功，已恢复数据')}})},5000);
+                        }else{
+                            toast('云端暂无数据，您可以开始创建客户');
+                        }
                     }
                 }else if(changed){
                     refreshAll();
@@ -2831,6 +2815,8 @@ function initApp(){
                 if(!__cloudLoadSkipped){
                     skipCloudLoading();
                     toast('⚠️ 云端同步失败，已切换到本地模式');
+                    // 5秒后自动重试
+                    setTimeout(function(){smartSync().then(function(c){if(c){refreshAll();toast('✅ 重试成功，已恢复数据')}})},5000);
                 }
             });
         }else{
