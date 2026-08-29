@@ -84,6 +84,31 @@ body{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei
 @keyframes pulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.3);opacity:.6}}
 .sync-label{font-size:10px;color:rgba(255,255,255,.8);flex-shrink:0;min-width:36px;text-align:right}
 
+/* ===== 首次启动云端加载遮罩 ===== */
+.cloud-loading-overlay{
+    position:fixed;top:0;left:0;right:0;bottom:0;
+    background:linear-gradient(135deg,var(--primary-dark),var(--primary));
+    z-index:99999;display:none;
+    flex-direction:column;align-items:center;justify-content:center;
+    color:#fff;
+}
+.cloud-loading-overlay.show{display:flex}
+.cloud-loading-overlay .cl-icon{font-size:48px;margin-bottom:20px;animation:float 2s ease-in-out infinite}
+.cloud-loading-overlay .cl-title{font-size:18px;font-weight:500;margin-bottom:8px}
+.cloud-loading-overlay .cl-sub{font-size:13px;opacity:.8;margin-bottom:24px}
+.cloud-loading-overlay .cl-spinner{
+    width:36px;height:36px;border:3px solid rgba(255,255,255,.3);
+    border-top-color:#fff;border-radius:50%;
+    animation:spin 0.8s linear infinite;
+}
+.cloud-loading-overlay .cl-skip{
+    margin-top:30px;padding:8px 20px;font-size:13px;
+    background:rgba(255,255,255,.15);border:none;border-radius:20px;color:#fff;
+    cursor:pointer;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
+
 /* ===== 侧边栏遮罩 ===== */
 .sidebar-overlay{
     position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.35);
@@ -358,6 +383,15 @@ textarea{resize:vertical;min-height:55px}
 <!-- 桌面端侧边栏折叠按钮 -->
 <button class="collapse-btn" id="collapseBtn" onclick="toggleSidebarCollapse()" style="display:none">◀</button>
 
+<!-- 首次启动云端加载遮罩 -->
+<div class="cloud-loading-overlay" id="cloudLoadingOverlay">
+    <div class="cl-icon">☁️</div>
+    <div class="cl-title">正在从云端同步数据</div>
+    <div class="cl-sub" id="cloudLoadingSub">首次使用，正在拉取您的客户数据...</div>
+    <div class="cl-spinner"></div>
+    <button class="cl-skip" onclick="skipCloudLoading()">跳过，先使用本地数据</button>
+</div>
+
 <!-- 顶部标题栏 -->
 <div class="topbar">
     <button class="menu-btn" onclick="openSidebar()">☰</button>
@@ -551,7 +585,7 @@ window.addEventListener('unhandledrejection',function(e){
 });
 // 安全的DOM访问
 function _safe(id){return document.getElementById(id)}
-const APP_VERSION='20260828v1';
+const APP_VERSION='20260828v2';
 const SUPABASE_URL='https://ffojcuwxoilihfkwskmr.supabase.co';
 const SUPABASE_KEY='sb_publishable_oflYYZKMqKlITynUYXFCkA_t_ft3Fbr';
 const SUPABASE_HEADERS={'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY,'Content-Type':'application/json'};
@@ -913,39 +947,84 @@ function mergeChecks(local,server){
     return merged;
 }
 
-// ============ 智能双向同步 ============
+// ============ 从云端获取指定用户的数据 ============
+function _fetchCloudData(userId){
+    return fetch(SUPABASE_URL+'/rest/v1/user_data?user_id=eq.'+userId+'&select=data,updated_at',{
+        headers:SUPABASE_HEADERS
+    }).then(function(r){
+        if(!r.ok)throw new Error('HTTP '+r.status);
+        return r.json();
+    }).then(function(rows){
+        if(rows&&rows.length&&rows[0].data)return rows[0].data;
+        return null;
+    });
+}
+
+// ============ 智能双向同步（支持双重数据源）============
 function smartSync(){
     if(__syncInProgress)return Promise.resolve(false);
     if(!navigator.onLine)return Promise.resolve(false);
     __syncInProgress=true;
     setSyncStatus('syncing');
-    return fetch(SUPABASE_URL+'/rest/v1/user_data?user_id=eq.workbench_work&select=data,updated_at',{
-        headers:SUPABASE_HEADERS
-    }).then(function(r){return r.json()}).then(function(rows){
-        if(!rows||!rows.length||!rows[0].data){
-            return _uploadData().then(function(){__syncInProgress=false;setSyncStatus('online');__lastSyncTime=Date.now();autoBackup();_logSync('首次上传');return true});
+    var primaryData=null;
+    var fallbackData=null;
+    var changed=false;
+    // 1. 先从主数据源 workbench_work 拉取
+    return _fetchCloudData('workbench_work').then(function(pd){
+        primaryData=pd;
+        // 2. 如果主数据源为空或数据很少，同时检查旧数据源 default
+        var hasEnoughData=primaryData&&primaryData.summaries&&primaryData.summaries.length>0;
+        if(!hasEnoughData){
+            return _fetchCloudData('default').catch(function(){return null});
         }
-        var sd=rows[0].data;
+        return null;
+    }).then(function(fd){
+        fallbackData=fd;
+        // 3. 合并所有云端数据到本地
         var arrKeys=['summaries'];
-        arrKeys.forEach(function(k){if(!sd[k])sd[k]=[]});
-        if(!sd.checks)sd.checks={};
-        if(!sd.water)sd.water={};
-        var changed=false;
-        arrKeys.forEach(function(k){
-            var before=D[k].length;
-            D[k]=mergeById(D[k],sd[k]);
-            if(D[k].length!==before)changed=true;
-        });
-        D.checks=mergeChecks(D.checks,sd.checks);
-        D.water=mergeChecks(D.water,sd.water);
+        if(primaryData){
+            arrKeys.forEach(function(k){if(!primaryData[k])primaryData[k]=[]});
+            if(!primaryData.checks)primaryData.checks={};
+            if(!primaryData.water)primaryData.water={};
+            arrKeys.forEach(function(k){
+                var before=D[k].length;
+                D[k]=mergeById(D[k],primaryData[k]);
+                if(D[k].length!==before)changed=true;
+            });
+            D.checks=mergeChecks(D.checks,primaryData.checks);
+            D.water=mergeChecks(D.water,primaryData.water);
+        }
+        if(fallbackData){
+            arrKeys.forEach(function(k){if(!fallbackData[k])fallbackData[k]=[]});
+            if(!fallbackData.checks)fallbackData.checks={};
+            if(!fallbackData.water)fallbackData.water={};
+            arrKeys.forEach(function(k){
+                var before=D[k].length;
+                D[k]=mergeById(D[k],fallbackData[k]);
+                if(D[k].length!==before)changed=true;
+            });
+            D.checks=mergeChecks(D.checks,fallbackData.checks);
+            D.water=mergeChecks(D.water,fallbackData.water);
+        }
         localStorage.setItem(KEY,JSON.stringify(D));
-        return _uploadData().then(function(){
-            __syncInProgress=false;setSyncStatus('online');__lastSyncTime=Date.now();autoBackup();
-            _logSync(changed?'合并同步':'常规同步');return changed;
-        });
+        // 4. 上传合并后的数据到主数据源
+        return _uploadData();
+    }).then(function(){
+        __syncInProgress=false;
+        setSyncStatus('online');
+        __lastSyncTime=Date.now();
+        autoBackup();
+        var action='常规同步';
+        if(changed)action='合并同步';
+        if(fallbackData)action+='(含旧数据恢复)';
+        _logSync(action);
+        return changed;
     }).catch(function(err){
-        console.warn('同步失败:',err);__syncInProgress=false;
-        _queuePendingOp('sync');setSyncStatus('offline');return false;
+        console.warn('同步失败:',err);
+        __syncInProgress=false;
+        _queuePendingOp('sync');
+        setSyncStatus('offline');
+        return false;
     });
 }
 
@@ -2627,12 +2706,28 @@ window.addEventListener('beforeunload',function(){
     localStorage.setItem(BACKUP_KEY,JSON.stringify(D));
 });
 
-// ============ 可见性变化时同步 ============
+// ============ 跳过云端加载 ============
+function skipCloudLoading(){
+    var overlay=$$('cloudLoadingOverlay');
+    if(overlay)overlay.classList.remove('show');
+    __cloudLoadSkipped=true;
+}
+let __cloudLoadSkipped=false;
+
+// ============ 检查本地数据是否为空 ============
+function _isLocalDataEmpty(){
+    if(!D)return true;
+    if(!D.summaries||D.summaries.length===0)return true;
+    return false;
+}
+
+// ============ 可见性变化时同步（切回前台立即同步）============
 document.addEventListener('visibilitychange',function(){
     if(document.visibilityState==='visible'){
         checkConnection();
-        if(navigator.onLine&&Date.now()-__lastSyncTime>30000){
-            smartSync().then(function(changed){if(changed)refreshAll()});
+        // 切回前台立即同步（原来30秒太慢）
+        if(navigator.onLine){
+            smartSync().then(function(changed){if(changed){refreshAll();toast('🔄 已同步最新数据')}});
         }
     }
 });
@@ -2698,15 +2793,58 @@ function initApp(){
         autoBackup();
     },60000);
 
-    // 首次同步
+    // ===== 首次同步策略 =====
+    var localEmpty=_isLocalDataEmpty();
     if(navigator.onLine){
-        // 先尝试从旧云端迁移数据
-        migrateFromOldCloud();
-        syncFromServer().then(function(changed){
-            if(changed){refreshAll();toast('🔄 已同步最新数据')}
-        });
+        if(localEmpty){
+            // 本地为空：显示加载遮罩，优先从云端拉取
+            var overlay=$$('cloudLoadingOverlay');
+            if(overlay){
+                overlay.classList.add('show');
+                var subEl=$$('cloudLoadingSub');
+                if(subEl)subEl.textContent='正在从云端拉取您的客户数据...';
+            }
+            // 超时保护：最多等8秒，超时自动跳过
+            var timeoutTimer=setTimeout(function(){
+                if(!__cloudLoadSkipped){
+                    skipCloudLoading();
+                    toast('⏱️ 云端连接较慢，已切换到本地模式');
+                }
+            },8000);
+            // 执行同步
+            smartSync().then(function(changed){
+                clearTimeout(timeoutTimer);
+                if(!__cloudLoadSkipped){
+                    skipCloudLoading();
+                    if(changed){
+                        refreshAll();
+                        toast('✅ 已从云端恢复 '+D.summaries.length+' 条训练记录');
+                    }else{
+                        toast('云端暂无数据，您可以开始创建客户');
+                    }
+                }else if(changed){
+                    refreshAll();
+                    toast('🔄 已同步最新数据');
+                }
+            }).catch(function(){
+                clearTimeout(timeoutTimer);
+                if(!__cloudLoadSkipped){
+                    skipCloudLoading();
+                    toast('⚠️ 云端同步失败，已切换到本地模式');
+                }
+            });
+        }else{
+            // 本地有数据：后台静默同步
+            migrateFromOldCloud();
+            syncFromServer().then(function(changed){
+                if(changed){refreshAll();toast('🔄 已同步最新数据')}
+            });
+        }
     }else{
         setSyncStatus('offline');
+        if(localEmpty){
+            toast('⚠️ 当前无网络，请连接网络后同步数据');
+        }
     }
     }catch(e){showError('initApp',e)}
 }
