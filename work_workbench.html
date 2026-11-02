@@ -604,7 +604,7 @@ window.addEventListener('unhandledrejection',function(e){
 });
 // 安全的DOM访问
 function _safe(id){return document.getElementById(id)}
-const APP_VERSION='20261102v1';
+const APP_VERSION='20261102v2';
 const SUPABASE_URL='https://ffojcuwxoilihfkwskmr.supabase.co';
 const SUPABASE_KEY='sb_publishable_oflYYZKMqKlITynUYXFCkA_t_ft3Fbr';
 const SUPABASE_HEADERS={'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY,'Content-Type':'application/json'};
@@ -1049,18 +1049,38 @@ function smartSync(){
 
 function _uploadData(){
     D._syncVersion=APP_VERSION;
+    // 表中只有 id/user_id/data/updated_at 四列，不能带 _app_version（会导致 HTTP 400）
     return fetch(SUPABASE_URL+'/rest/v1/user_data?user_id=eq.workbench_work',{
-        method:'PATCH',headers:SUPABASE_HEADERS,cache:'no-store',
-        body:JSON.stringify({data:D,updated_at:new Date().toISOString(),_app_version:APP_VERSION})
+        method:'PATCH',
+        headers:Object.assign({},SUPABASE_HEADERS,{'Prefer':'return=representation'}),
+        cache:'no-store',
+        body:JSON.stringify({data:D,updated_at:new Date().toISOString()})
     }).then(function(r){
-        if(r.status===404||r.status===406){
-            return fetch(SUPABASE_URL+'/rest/v1/user_data',{
-                method:'POST',headers:Object.assign({},SUPABASE_HEADERS,{'Prefer':'return=minimal'}),cache:'no-store',
-                body:JSON.stringify({user_id:'workbench_work',data:D,updated_at:new Date().toISOString(),_app_version:APP_VERSION})
-            });
-        }
         if(!r.ok)throw new Error('HTTP '+r.status);
-        return r;
+        return r.json();
+    }).then(function(rows){
+        if(rows&&rows.length)return true;
+        // 云端行不存在（PATCH 会静默成功），必须 POST 新建
+        return fetch(SUPABASE_URL+'/rest/v1/user_data',{
+            method:'POST',
+            headers:Object.assign({},SUPABASE_HEADERS,{'Prefer':'return=minimal'}),
+            cache:'no-store',
+            body:JSON.stringify({user_id:'workbench_work',data:D,updated_at:new Date().toISOString()})
+        }).then(function(r2){
+            if(!r2.ok)throw new Error('HTTP '+r2.status);
+            return true;
+        });
+    }).then(function(){
+        // 写完回读校验，确认云端确实存在这一行
+        return fetch(SUPABASE_URL+'/rest/v1/user_data?user_id=eq.workbench_work&select=updated_at',{
+            headers:SUPABASE_HEADERS,cache:'no-store'
+        });
+    }).then(function(r3){
+        if(!r3.ok)throw new Error('HTTP '+r3.status);
+        return r3.json();
+    }).then(function(rows){
+        if(!rows||!rows.length)throw new Error('云端未写入');
+        return rows;
     });
 }
 

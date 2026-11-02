@@ -602,7 +602,7 @@ textarea{resize:vertical;min-height:55px}
 </nav>
 
 <script>
-const APP_VERSION='20260728v3';
+const APP_VERSION='20261102v1';
 const SUPABASE_URL='https://ffojcuwxoilihfkwskmr.supabase.co';
 const SUPABASE_KEY='sb_publishable_oflYYZKMqKlITynUYXFCkA_t_ft3Fbr';
 const SUPABASE_HEADERS={'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY,'Content-Type':'application/json'};
@@ -920,18 +920,34 @@ function smartSync(){
 
 function _uploadData(){
     D._syncVersion=APP_VERSION;
+    // 表中只有 id/user_id/data/updated_at 四列，不能带 _app_version（会导致 HTTP 400）
     return fetch(SUPABASE_URL+'/rest/v1/user_data?user_id=eq.workbench_life',{
-        method:'PATCH',headers:SUPABASE_HEADERS,
-        body:JSON.stringify({data:D,updated_at:new Date().toISOString(),_app_version:APP_VERSION})
+        method:'PATCH',
+        headers:Object.assign({},SUPABASE_HEADERS,{'Prefer':'return=representation'}),
+        body:JSON.stringify({data:D,updated_at:new Date().toISOString()})
     }).then(function(r){
-        if(r.status===404||r.status===406){
-            return fetch(SUPABASE_URL+'/rest/v1/user_data',{
-                method:'POST',headers:Object.assign({},SUPABASE_HEADERS,{'Prefer':'return=minimal'}),
-                body:JSON.stringify({user_id:'workbench_life',data:D,updated_at:new Date().toISOString(),_app_version:APP_VERSION})
-            });
-        }
         if(!r.ok)throw new Error('HTTP '+r.status);
-        return r;
+        return r.json();
+    }).then(function(rows){
+        if(rows&&rows.length)return true;
+        return fetch(SUPABASE_URL+'/rest/v1/user_data',{
+            method:'POST',
+            headers:Object.assign({},SUPABASE_HEADERS,{'Prefer':'return=minimal'}),
+            body:JSON.stringify({user_id:'workbench_life',data:D,updated_at:new Date().toISOString()})
+        }).then(function(r2){
+            if(!r2.ok)throw new Error('HTTP '+r2.status);
+            return true;
+        });
+    }).then(function(){
+        return fetch(SUPABASE_URL+'/rest/v1/user_data?user_id=eq.workbench_life&select=updated_at',{
+            headers:SUPABASE_HEADERS
+        });
+    }).then(function(r3){
+        if(!r3.ok)throw new Error('HTTP '+r3.status);
+        return r3.json();
+    }).then(function(rows){
+        if(!rows||!rows.length)throw new Error('云端未写入');
+        return rows;
     });
 }
 
